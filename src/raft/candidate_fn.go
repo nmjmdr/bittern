@@ -21,7 +21,8 @@ func newCandidate(n *node) *candidate {
 	if !ok {
 		panic("could not obtain current term as a candiate")
 	}
-	c.campaign(peers,currentTerm)
+	//c.campaign(peers,currentTerm)
+	c.d.campaigner(c.node)(peers,currentTerm)
 	return c
 }
 

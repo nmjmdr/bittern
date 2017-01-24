@@ -14,6 +14,7 @@ type depends struct {
 	getTicker     getTickerFn
 	peersExplorer peersExplorer
 	transport     transport
+	campaigner campaigner
 }
 
 type node struct {

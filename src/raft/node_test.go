@@ -10,7 +10,7 @@ var getMockTickerFn getTickerFn = func(d time.Duration) Ticker {
 	return newMockTicker(d)
 }
 
-func getNode(mockTickerFn getTickerFn, store store,peers []peer) *node {
+func getNode(mockTickerFn getTickerFn, store store, peers []peer) *node {
 
 	if store == nil {
 		store = newInMemorystore()
@@ -22,26 +22,26 @@ func getNode(mockTickerFn getTickerFn, store store,peers []peer) *node {
 	if peers == nil {
 		peers = []peer{}
 	}
-	return NewNodeWithDI("node-1", depends{dispatcher: d,store: store,getTicker: mockTickerFn,transport: newMockTransport(),peersExplorer: newSimplePeersExplorer(peers)})
+
+	return NewNodeWithDI("node-1", depends{dispatcher: d, store: store, getTicker: mockTickerFn, transport: newMockTransport(), peersExplorer: newSimplePeersExplorer(peers)})
 }
 
-
 func Test_onInitItShouldSetCommitIndexTo0(t *testing.T) {
-	n := getNode(nil, nil,nil)
+	n := getNode(nil, nil, nil)
 	if n.st.commitIndex != 0 {
 		t.Fatal("Commit Index should have been intialized to 0")
 	}
 }
 
 func Test_onInitItShouldSetLastAppliedTo0(t *testing.T) {
-	n := getNode(nil, nil,nil)
+	n := getNode(nil, nil, nil)
 	if n.st.lastApplied != 0 {
 		t.Fatal("Commit Index should have been intialized to 0")
 	}
 }
 
 func Test_onInitItShouldStartAsAFollower(t *testing.T) {
-	n := getNode(nil, nil,nil)
+	n := getNode(nil, nil, nil)
 	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*follower)(nil)) {
 		t.Fatal("Should have been a follower")
 	}
@@ -51,7 +51,7 @@ func Test_CanGetCurrentIndexFromstore(t *testing.T) {
 	store := newInMemorystore()
 	expected := uint64(100)
 	store.setInt("current-term", expected)
-	n := getNode(nil, store,nil)
+	n := getNode(nil, store, nil)
 	actual, ok := n.d.store.getInt("current-term")
 	if !ok {
 		t.Fatal("could not obtain current-term from store")
@@ -66,7 +66,7 @@ func Test_CanGetVotedForFromstore(t *testing.T) {
 	store := newInMemorystore()
 	expected := "node-2"
 	store.setValue("voted-for", expected)
-	n := getNode(nil, store,nil)
+	n := getNode(nil, store, nil)
 	actual, ok := n.d.store.getValue("voted-for")
 	if !ok {
 		t.Fatal("could not obtain voted-for from store")
@@ -78,7 +78,7 @@ func Test_CanGetVotedForFromstore(t *testing.T) {
 }
 
 func Test_OnBootGetsCurrentTermAs0(t *testing.T) {
-	n := getNode(nil, nil,nil)
+	n := getNode(nil, nil, nil)
 	actual, ok := n.d.store.getInt(currentTermKey)
 
 	if !ok {
@@ -107,7 +107,7 @@ func Test_AsAFollowerStartsTheElectionTimer(t *testing.T) {
 		return newMockTicker(d)
 	}
 
-	getNode(g, nil,nil)
+	getNode(g, nil, nil)
 
 	if called == false {
 		t.Fatal("Mock ticker for election timer not initialized")
@@ -120,7 +120,7 @@ func Test_OnElectionTSignalItShouldIncrementCurrentTerm(t *testing.T) {
 		return mockTicker
 	}
 
-	n := getNode(g, nil,nil)
+	n := getNode(g, nil, nil)
 
 	// trigger the election signal
 	mockTicker.tick()
@@ -142,7 +142,7 @@ func Test_OnElectionTSignalItShouldTransitionToACandidate(t *testing.T) {
 		return mockTicker
 	}
 
-	n := getNode(g, nil,nil)
+	n := getNode(g, nil, nil)
 
 	// trigger the election signal
 	mockTicker.tick()
@@ -161,32 +161,7 @@ func Test_OnTransitionToACandidateItShouldVoteForItself(t *testing.T) {
 		return mockTicker
 	}
 
-	n := getNode(g, nil,nil)
-
-	// trigger the election signal
-	mockTicker.tick()
-	// mock ticker does not run things concurrently, hence we can test for functionality
-	// the same cannot be said about about event loop
-
-	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*candidate)(nil)) {
-		t.Fatal("Should have been a candidate, after getting election signal")
-	}
-
-	c := n.st.stFn.(*candidate)
-	if c.votesReceived != 1 {
-		t.Fatal("candidate did not vote for itself")
-	}
-}
-
-
-// Test if candidate votes for self
-func Test_OnTransitionToACandidateItShouldAskForVotesFromPeers(t *testing.T) {
-	var mockTicker = newMockTicker(time.Duration(1))
-	var g getTickerFn = func(d time.Duration) Ticker {
-		return mockTicker
-	}
-
-	n := getNode(g, nil,nil)
+	n := getNode(g, nil, nil)
 
 	// trigger the election signal
 	mockTicker.tick()

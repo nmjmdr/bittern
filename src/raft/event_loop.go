@@ -31,7 +31,7 @@ func (l *eventLoop) start() {
 func (l *eventLoop) mapToHandler(evt event) {
 	switch evt.evtType {
 	case GotElectionSignal:
-		evt.st.stFn.gotElectionSignal(evt.st)
+		evt.st.stFn.gotElectionSignal()
 	}
 }
 

@@ -1,6 +1,6 @@
 package raft
 
 type voteRequest struct {
-  from string
-  term uint64
+	from string
+	term uint64
 }

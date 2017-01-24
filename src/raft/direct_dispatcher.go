@@ -12,7 +12,7 @@ func (d *directDispatcher) start() {
 func (d *directDispatcher) dispatch(evt event) {
 	switch evt.evtType {
 	case GotElectionSignal:
-		evt.st.stFn.gotElectionSignal(evt.st)
+		evt.st.stFn.gotElectionSignal()
 	}
 }
 

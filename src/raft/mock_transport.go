@@ -1,21 +1,14 @@
 package raft
 
-type askForVoteCallbackFn func(peer peer,vr voteRequest) (voteResponse,error)
-
-type callbackMap struct {
-	askForVote askForVoteCallbackFn
-}
 
 type mockTransport struct {
-	cbMap *callbackMap
 }
 
-func newMockTransport(cbMap *callbackMap) transport {
+func newMockTransport() transport {
 	m := new(mockTransport)
-	m.cbMap = cbMap
 	return m
 }
 
-func (m *mockTransport) askVote(peer peer,vr voteRequest) (voteResponse, error) {
-	return m.cbMap.askForVote(peer,vr)
+func (m *mockTransport) askVote(peer peer, vr voteRequest) (voteResponse, error) {
+	return voteResponse{},nil
 }

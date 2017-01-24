@@ -1,5 +1,10 @@
 package raft
 
+import (
+	"fmt"
+	"reflect"
+)
+
 type follower struct {
 	*node
 }
@@ -18,7 +23,7 @@ func newFollower(n *node) *follower {
 	return f
 }
 
-func (f *follower) gotElectionSignal(st *state) {
+func (f *follower) gotElectionSignal() {
 
 	// we do not need worry about whether
 	// a. Should we increment the term and then transition to a canidate
@@ -35,5 +40,7 @@ func (f *follower) gotElectionSignal(st *state) {
 	f.d.store.setInt(currentTermKey, currentTerm)
 
 	//transition to a candidate
-	st.stFn = newCandidate(f.node)
+	f.st.stFn = newCandidate(f.node)
+	fmt.Printf("Here in follower: ")
+	fmt.Println(reflect.TypeOf(f.node.st.stFn))
 }

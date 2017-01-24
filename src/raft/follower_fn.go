@@ -1,9 +1,5 @@
 package raft
 
-import (
-	"fmt"
-	"reflect"
-)
 
 type follower struct {
 	*node
@@ -41,6 +37,4 @@ func (f *follower) gotElectionSignal() {
 
 	//transition to a candidate
 	f.st.stFn = newCandidate(f.node)
-	fmt.Printf("Here in follower: ")
-	fmt.Println(reflect.TypeOf(f.node.st.stFn))
 }

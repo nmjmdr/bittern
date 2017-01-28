@@ -7,7 +7,7 @@ const (
 	Stop
 	AppendEntry
 	GotVote
-	GotVoteRejected
+	GotVoteRequestRejected
 	GotRequestForVote
 	GotElectionSignal
 	GotHeartbeatSignal

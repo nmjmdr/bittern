@@ -13,3 +13,11 @@ func getRandomElectionTimeout() time.Duration {
 	n := rand.Intn(electionTimeoutMaxMs-electionTimeoutMinMs) + electionTimeoutMinMs
 	return time.Duration(n) * time.Millisecond
 }
+
+func getCurrentTerm(store store) uint64 {
+	currentTerm, ok := store.getInt(currentTermKey)
+	if !ok {
+		panic("could not obtain current term as a candiate")
+	}
+	return currentTerm
+}

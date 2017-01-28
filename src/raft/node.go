@@ -50,7 +50,6 @@ func NewNodeWithDI(id string, d depends) *node {
 	n.d.dispatcher.start()
 	// set the state function as a follower
 	n.st.stFn = newFollower(n)
-
 	return n
 }
 

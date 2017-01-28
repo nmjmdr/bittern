@@ -64,6 +64,7 @@ When receives election timeout:
 When initialized as a candidate:
   - The term would have incremented by the follower
   - Vote for self
+  - Begin election timer
   - Start requesting for vote from peers
   - while waiting for vote reply - could get:
       - A request for vote from another candidate
@@ -71,4 +72,3 @@ When initialized as a candidate:
       - An append entry from a leader
         - If the current term is same or less - then reject, greater than transition to a follower
       - In summary current term is greater than transition to a follower
-      

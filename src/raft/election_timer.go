@@ -1,5 +1,6 @@
 package raft
 
+
 func beginElectionTimer(tickerFn getTickerFn, dispatcher dispatcher, st *state) {
 	ticker := tickerFn(getRandomElectionTimeout())
 	go func() {

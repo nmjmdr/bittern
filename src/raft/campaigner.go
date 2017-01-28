@@ -15,7 +15,7 @@ func parallelCampaigner(c *node) func(peers []peer, currentTerm uint64) {
 				if vRes.Success {
 					c.d.dispatcher.dispatch(event{GotVote, c.st, vRes})
 				} else {
-					c.d.dispatcher.dispatch(event{GotVoteRejected, c.st, vRes})
+					c.d.dispatcher.dispatch(event{GotVoteRequestRejected, c.st, vRes})
 				}
 			}()
 		}

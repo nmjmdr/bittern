@@ -15,7 +15,7 @@ func getNode(mockTickerFn getTickerFn, store store, peers []peer) *node {
 	if store == nil {
 		store = newInMemorystore()
 	}
-	d := &directDispatcher{}
+	d := newDirectDispatcher()
 	if mockTickerFn == nil {
 		mockTickerFn = getMockTickerFn
 	}
@@ -126,6 +126,8 @@ func Test_OnElectionTSignalItShouldIncrementCurrentTerm(t *testing.T) {
 
 	// trigger the election signal
 	mockTicker.tick()
+	directD := n.d.dispatcher.(*directDispatcher)
+	<- directD.dispatched
 
 	v, ok := n.d.store.getInt(currentTermKey)
 
@@ -148,8 +150,8 @@ func Test_OnElectionTSignalItShouldTransitionToACandidate(t *testing.T) {
 
 	// trigger the election signal
 	mockTicker.tick()
-	// mock ticker does not run things concurrently, hence we can test for functionality
-	// the same cannot be said about about event loop
+	directD := n.d.dispatcher.(*directDispatcher)
+	<- directD.dispatched
 
 	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*candidate)(nil)) {
 		t.Fatal("Should have been a candidate, after getting election signal")
@@ -167,8 +169,8 @@ func Test_OnTransitionToACandidateItShouldVoteForItself(t *testing.T) {
 
 	// trigger the election signal
 	mockTicker.tick()
-	// mock ticker does not run things concurrently, hence we can test for functionality
-	// the same cannot be said about about event loop
+	directD := n.d.dispatcher.(*directDispatcher)
+	<- directD.dispatched
 
 	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*candidate)(nil)) {
 		t.Fatal("Should have been a candidate, after getting election signal")
@@ -180,7 +182,6 @@ func Test_OnTransitionToACandidateItShouldVoteForItself(t *testing.T) {
 	}
 }
 
-// Test if candidate votes for self
 func Test_OnTransitionToACandidateItShouldAskForVotesFromPeers(t *testing.T) {
 	var mockTicker = newMockTicker(time.Duration(1))
 	var g getTickerFn = func(d time.Duration) Ticker {
@@ -197,8 +198,8 @@ func Test_OnTransitionToACandidateItShouldAskForVotesFromPeers(t *testing.T) {
 
 	// trigger the election signal
 	mockTicker.tick()
-	// mock ticker does not run things concurrently, hence we can test for functionality
-	// the same cannot be said about about event loop
+	directD := n.d.dispatcher.(*directDispatcher)
+	<- directD.dispatched
 
 	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*candidate)(nil)) {
 		t.Fatal("Should have been a candidate, after getting election signal")
@@ -207,4 +208,36 @@ func Test_OnTransitionToACandidateItShouldAskForVotesFromPeers(t *testing.T) {
 	if actualPeers == nil || len(actualPeers) != 1 || actualPeers[0].Id != "peer1" {
 		t.Fatal("peers not asked for vote")
 	}
+}
+
+func Test_AsACandiateOnGettElectionSignalTransitionsToAFollower(t *testing.T) {
+	var mockTicker = newMockTicker(time.Duration(1))
+	var g getTickerFn = func(d time.Duration) Ticker {
+		return mockTicker
+	}
+
+	n := getNode(g, nil, []peer{{"peer1", "address1"}})
+
+	n.d.campaigner = func(c *node) func(peers []peer, currentTerm uint64) {
+		return func(peers []peer, currentTerm uint64) {
+		}
+	}
+
+	// trigger the election signal
+	mockTicker.tick()
+	directD := n.d.dispatcher.(*directDispatcher)
+	<- directD.dispatched
+
+	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*candidate)(nil)) {
+		t.Fatal("Should have been a candidate, after getting election signal")
+	}
+
+	// trigger the election signal
+	mockTicker.tick()
+	<- directD.dispatched
+
+	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*follower)(nil)) {
+		t.Fatal("Should have transitioned to a follower, after getting election signal as a candidate")
+	}
+
 }

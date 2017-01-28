@@ -1,5 +1,6 @@
 package raft
 
+
 type follower struct {
 	*node
 }
@@ -7,19 +8,11 @@ type follower struct {
 func newFollower(n *node) *follower {
 	f := new(follower)
 	f.node = n
-	// start the election timer, and start listening
-	electionTicker := f.d.getTicker(getRandomElectionTimeout())
-	go func() {
-		_, ok := <-electionTicker.Channel()
-		if ok {
-			f.node.d.dispatcher.dispatch(event{GotElectionSignal, f.node.st, nil})
-		}
-	}()
+	beginElectionTimer(f.d.getTicker,f.d.dispatcher,f.st)
 	return f
 }
 
 func (f *follower) gotElectionSignal() {
-
 	// we do not need worry about whether
 	// a. Should we increment the term and then transition to a canidate
 	// or b. should we transition to a candidate and then increment the term
@@ -36,4 +29,15 @@ func (f *follower) gotElectionSignal() {
 
 	//transition to a candidate
 	f.st.stFn = newCandidate(f.node)
+}
+
+func (f *follower) gotVote(vr voteResponse) {
+	// already a follower, we must be getting this message from
+	// another node which is out of sync with the restrats
+	// ignore
+}
+
+func (f *follower) gotVoteRequestRejected(vr voteResponse) {
+	// already a a follower, probably a delayed response by a node
+	// ignore
 }

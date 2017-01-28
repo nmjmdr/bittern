@@ -1,6 +1,6 @@
 package raft
 
-type askVoteCallbackFn func(peer peer,vr voteRequest) (voteResponse,error)
+type askVoteCallbackFn func(peer peer, vr voteRequest) (voteResponse, error)
 
 type mockTransport struct {
 	askVoteCb askVoteCallbackFn
@@ -13,5 +13,5 @@ func newMockTransport(askVoteCb askVoteCallbackFn) transport {
 }
 
 func (m *mockTransport) askVote(peer peer, vr voteRequest) (voteResponse, error) {
-	return m.askVoteCb(peer,vr)
+	return m.askVoteCb(peer, vr)
 }

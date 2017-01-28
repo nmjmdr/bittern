@@ -22,10 +22,10 @@ func getNode(mockTickerFn getTickerFn, store store, peers []peer) *node {
 	if peers == nil {
 		peers = []peer{}
 	}
-	transport := newMockTransport(func(peer peer,vReq voteRequest) (voteResponse,error) {
-		return voteResponse{Success:true,Term:1,From:"mock"},nil
+	transport := newMockTransport(func(peer peer, vReq voteRequest) (voteResponse, error) {
+		return voteResponse{Success: true, Term: 1, From: "mock"}, nil
 	})
-	return NewNodeWithDI("node-1", depends{dispatcher: d, store: store, getTicker: mockTickerFn, transport: transport, peersExplorer: newSimplePeersExplorer(peers),campaigner:parallelCampaigner})
+	return NewNodeWithDI("node-1", depends{dispatcher: d, store: store, getTicker: mockTickerFn, transport: transport, peersExplorer: newSimplePeersExplorer(peers), campaigner: parallelCampaigner})
 }
 
 func Test_onInitItShouldSetCommitIndexTo0(t *testing.T) {
@@ -180,11 +180,6 @@ func Test_OnTransitionToACandidateItShouldVoteForItself(t *testing.T) {
 	}
 }
 
-
-
-
-
-
 // Test if candidate votes for self
 func Test_OnTransitionToACandidateItShouldAskForVotesFromPeers(t *testing.T) {
 	var mockTicker = newMockTicker(time.Duration(1))
@@ -192,28 +187,14 @@ func Test_OnTransitionToACandidateItShouldAskForVotesFromPeers(t *testing.T) {
 		return mockTicker
 	}
 
-	n := getNode(g, nil, []peer{{"peer1","address1"}})
+	n := getNode(g, nil, []peer{{"peer1", "address1"}})
 	var actualPeers []peer
-	n.d.campaigner = func (c *node) func(peers []peer,currentTerm uint64) {
-	  return func (peers []peer,currentTerm uint64) {
+	n.d.campaigner = func(c *node) func(peers []peer, currentTerm uint64) {
+		return func(peers []peer, currentTerm uint64) {
 			actualPeers = peers
-	  	vReq := voteRequest{c.Id(),currentTerm}
-	  	for _,peer := range peers {
-	  		func() {
-	  			vRes, err := c.d.transport.askVote(peer,vReq)
-	  			if err != nil {
-	  				// log and return
-	  				return
-	  			}
-	  			if vRes.Success {
-	  				c.d.dispatcher.dispatch(event{GotVote,c.st,vRes})
-	  			} else {
-	  				c.d.dispatcher.dispatch(event{GotVoteRejected,c.st,vRes})
-	  			}
-	  		}()
-	  	}
-	  }
+		}
 	}
+
 	// trigger the election signal
 	mockTicker.tick()
 	// mock ticker does not run things concurrently, hence we can test for functionality
@@ -222,7 +203,6 @@ func Test_OnTransitionToACandidateItShouldAskForVotesFromPeers(t *testing.T) {
 	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*candidate)(nil)) {
 		t.Fatal("Should have been a candidate, after getting election signal")
 	}
-
 
 	if actualPeers == nil || len(actualPeers) != 1 || actualPeers[0].Id != "peer1" {
 		t.Fatal("peers not asked for vote")

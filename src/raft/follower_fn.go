@@ -1,6 +1,5 @@
 package raft
 
-
 type follower struct {
 	*node
 }

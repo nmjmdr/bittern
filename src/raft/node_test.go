@@ -127,7 +127,9 @@ func Test_OnElectionTSignalItShouldIncrementCurrentTerm(t *testing.T) {
 	// trigger the election signal
 	mockTicker.tick()
 	directD := n.d.dispatcher.(*directDispatcher)
-	<- directD.dispatched
+	//<- directD.dispatched
+	directD.awaitSignal()
+	directD.reset()
 
 	v, ok := n.d.store.getInt(currentTermKey)
 
@@ -151,7 +153,9 @@ func Test_OnElectionTSignalItShouldTransitionToACandidate(t *testing.T) {
 	// trigger the election signal
 	mockTicker.tick()
 	directD := n.d.dispatcher.(*directDispatcher)
-	<- directD.dispatched
+	//<- directD.dispatched
+	directD.awaitSignal()
+	directD.reset()
 
 	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*candidate)(nil)) {
 		t.Fatal("Should have been a candidate, after getting election signal")
@@ -170,7 +174,9 @@ func Test_OnTransitionToACandidateItShouldVoteForItself(t *testing.T) {
 	// trigger the election signal
 	mockTicker.tick()
 	directD := n.d.dispatcher.(*directDispatcher)
-	<- directD.dispatched
+	//<- directD.dispatched
+	directD.awaitSignal()
+	directD.reset()
 
 	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*candidate)(nil)) {
 		t.Fatal("Should have been a candidate, after getting election signal")
@@ -199,7 +205,9 @@ func Test_OnTransitionToACandidateItShouldAskForVotesFromPeers(t *testing.T) {
 	// trigger the election signal
 	mockTicker.tick()
 	directD := n.d.dispatcher.(*directDispatcher)
-	<- directD.dispatched
+	//<- directD.dispatched
+	directD.awaitSignal()
+	directD.reset()
 
 	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*candidate)(nil)) {
 		t.Fatal("Should have been a candidate, after getting election signal")
@@ -226,7 +234,9 @@ func Test_AsACandiateOnGettElectionSignalTransitionsToAFollower(t *testing.T) {
 	// trigger the election signal
 	mockTicker.tick()
 	directD := n.d.dispatcher.(*directDispatcher)
-	<- directD.dispatched
+	//<- directD.dispatched
+	directD.awaitSignal()
+	directD.reset()
 
 	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*candidate)(nil)) {
 		t.Fatal("Should have been a candidate, after getting election signal")
@@ -234,7 +244,9 @@ func Test_AsACandiateOnGettElectionSignalTransitionsToAFollower(t *testing.T) {
 
 	// trigger the election signal
 	mockTicker.tick()
-	<- directD.dispatched
+	//<- directD.dispatched
+	directD.awaitSignal()
+	directD.reset()
 
 	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*follower)(nil)) {
 		t.Fatal("Should have transitioned to a follower, after getting election signal as a candidate")

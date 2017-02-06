@@ -32,6 +32,10 @@ func (l *eventLoop) mapToHandler(evt event) {
 	switch evt.evtType {
 	case GotElectionSignal:
 		evt.st.stFn.gotElectionSignal()
+	case GotVoteRequestRejected:
+		evt.st.stFn.gotVoteRequestRejected(evt)
+	case GotVote:
+		evt.st.stFn.gotVote(evt)
 	}
 }
 

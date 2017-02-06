@@ -26,6 +26,10 @@ func (d *directDispatcher) dispatch(evt event) {
 	switch evt.evtType {
 	case GotElectionSignal:
 		evt.st.stFn.gotElectionSignal()
+	case GotVoteRequestRejected:
+		evt.st.stFn.gotVoteRequestRejected(evt)
+	case GotVote:
+		evt.st.stFn.gotVote(evt)
 	}
 	// inform that the event was dispatched
 	//d.dispatched <- true

@@ -31,13 +31,13 @@ func (f *follower) gotElectionSignal() {
 	f.st.stFn = newCandidate(f.node)
 }
 
-func (f *follower) gotVote(vr voteResponse) {
+func (f *follower) gotVote(evt event) {
 	// already a follower, we must be getting this message from
 	// another node which is out of sync with the restrats
 	// ignore
 }
 
-func (f *follower) gotVoteRequestRejected(vr voteResponse) {
+func (f *follower) gotVoteRequestRejected(evt event) {
 	// already a a follower, probably a delayed response by a node
 	// ignore
 }

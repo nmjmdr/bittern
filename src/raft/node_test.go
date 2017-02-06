@@ -218,7 +218,7 @@ func Test_OnTransitionToACandidateItShouldAskForVotesFromPeers(t *testing.T) {
 	}
 }
 
-func Test_AsACandiateOnGettElectionSignalTransitionsToAFollower(t *testing.T) {
+func Test_AsACandiateOnElectionSignalTransitionsToAFollower(t *testing.T) {
 	var mockTicker = newMockTicker(time.Duration(1))
 	var g getTickerFn = func(d time.Duration) Ticker {
 		return mockTicker
@@ -250,6 +250,132 @@ func Test_AsACandiateOnGettElectionSignalTransitionsToAFollower(t *testing.T) {
 
 	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*follower)(nil)) {
 		t.Fatal("Should have transitioned to a follower, after getting election signal as a candidate")
+	}
+
+}
+
+
+func Test_AsACandiateOnGettingARejectedVoteTransitionsToAFollower(t *testing.T) {
+	var mockTicker = newMockTicker(time.Duration(1))
+	var g getTickerFn = func(d time.Duration) Ticker {
+		return mockTicker
+	}
+
+	n := getNode(g, nil, []peer{{"peer1", "address1"}})
+
+	n.d.campaigner = func(c *node) func(peers []peer, currentTerm uint64) {
+		return func(peers []peer, currentTerm uint64) {
+		}
+	}
+
+	// trigger the election signal
+	mockTicker.tick()
+	directD := n.d.dispatcher.(*directDispatcher)
+	//<- directD.dispatched
+	directD.awaitSignal()
+	directD.reset()
+
+	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*candidate)(nil)) {
+		t.Fatal("Should have been a candidate, after getting election signal")
+	}
+	term, ok := n.d.store.getInt(currentTermKey)
+	if !ok {
+		t.Fatal("Could not get current term")
+	}
+	directD.dispatch(event{evtType:GotVoteRequestRejected,st:n.st,payload:&voteResponse{Success:false,Term:(term+1),From:"peer1"}})
+	directD.awaitSignal()
+	directD.reset()
+
+	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*follower)(nil)) {
+		t.Fatal("Should have transitioned to a follower, after getting a rejected vote as a candidate")
+	}
+
+}
+
+func Test_AsACandiateOnGettingRequisiteVotesTransitionsToALeader(t *testing.T) {
+	var mockTicker = newMockTicker(time.Duration(1))
+	var g getTickerFn = func(d time.Duration) Ticker {
+		return mockTicker
+	}
+
+	n := getNode(g, nil, []peer{{"peer0","address0"},{"peer1", "address1"}})
+
+	n.d.campaigner = func(c *node) func(peers []peer, currentTerm uint64) {
+		return func(peers []peer, currentTerm uint64) {
+		}
+	}
+
+	// trigger the election signal
+	mockTicker.tick()
+	directD := n.d.dispatcher.(*directDispatcher)
+	//<- directD.dispatched
+	directD.awaitSignal()
+	directD.reset()
+
+	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*candidate)(nil)) {
+		t.Fatal("Should have been a candidate, after getting election signal")
+	}
+	term, ok := n.d.store.getInt(currentTermKey)
+	if !ok {
+		t.Fatal("Could not get current term")
+	}
+	directD.dispatch(event{evtType:GotVote,st:n.st,payload:&voteResponse{Success:true,Term:(term),From:"peer1"}})
+	directD.awaitSignal()
+	directD.reset()
+
+	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*leader)(nil)) {
+		t.Fatal("Should have transitioned to a leader, after getting the required number of votes as a candidate")
+	}
+
+}
+
+
+func Test_AsACandiateGetsLessThanMajorityVotesDoesNotGetElectedAsLeader(t *testing.T) {
+	var mockTicker = newMockTicker(time.Duration(1))
+	var g getTickerFn = func(d time.Duration) Ticker {
+		return mockTicker
+	}
+
+	n := getNode(g, nil, []peer{ {"peer0", "address0"},{"peer1", "address1"},{"peer2","address2"},{"peer3","address3"} })
+
+	n.d.campaigner = func(c *node) func(peers []peer, currentTerm uint64) {
+		return func(peers []peer, currentTerm uint64) {
+		}
+	}
+
+	// trigger the election signal
+	mockTicker.tick()
+	directD := n.d.dispatcher.(*directDispatcher)
+	//<- directD.dispatched
+	directD.awaitSignal()
+	directD.reset()
+
+	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*candidate)(nil)) {
+		t.Fatal("Should have been a candidate, after getting election signal")
+	}
+
+	term, ok := n.d.store.getInt(currentTermKey)
+	if !ok {
+		t.Fatal("Could not get current term")
+	}
+
+	// a no from peer1 and peer2
+	directD.dispatch(event{evtType:GotVoteRequestRejected,st:n.st,payload:&voteResponse{Success:false,Term:(term),From:"peer1"}})
+	directD.awaitSignal()
+	directD.reset()
+
+	directD.dispatch(event{evtType:GotVoteRequestRejected,st:n.st,payload:&voteResponse{Success:false,Term:(term),From:"peer2"}})
+	directD.awaitSignal()
+	directD.reset()
+
+	// a yes from peer3
+	directD.dispatch(event{evtType:GotVote,st:n.st,payload:&voteResponse{Success:true,Term:(term),From:"peer3"}})
+	directD.awaitSignal()
+	directD.reset()
+
+
+	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*candidate)(nil)) {
+		t.Fatal("Should still have remained as a candidate, after getting less than majority votes")
 	}
 
 }

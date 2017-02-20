@@ -13,7 +13,7 @@ type depends struct {
 	store         store
 	getTicker     getTickerFn
 	peersExplorer peersExplorer
-	campaigner    campaigner
+	chatter    chatter
 }
 
 type node struct {

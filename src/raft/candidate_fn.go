@@ -17,7 +17,7 @@ func newCandidate(n *node) *candidate {
 	// TO DO: start requesting vote from peers
 	peers := c.d.peersExplorer.getPeers()
 	currentTerm := getCurrentTerm(c.d.store)
-	c.d.campaigner(c.node)(peers, currentTerm)
+	c.d.chatter.campaign(peers, currentTerm)
 	return c
 }
 

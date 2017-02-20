@@ -23,7 +23,7 @@ func getNode(mockTickerFn getTickerFn, store store, peers []peer) *node {
 		peers = []peer{}
 	}
 
-	return NewNodeWithDI("node-1", depends{dispatcher: d, store: store, getTicker: mockTickerFn, peersExplorer: newSimplePeersExplorer(peers), campaigner: noCampaigner})
+	return NewNodeWithDI("node-1", depends{dispatcher: d, store: store, getTicker: mockTickerFn, peersExplorer: newSimplePeersExplorer(peers), chatter: newMockChatter()})
 }
 
 func Test_onInitItShouldSetCommitIndexTo0(t *testing.T) {
@@ -194,11 +194,10 @@ func Test_OnTransitionToACandidateItShouldAskForVotesFromPeers(t *testing.T) {
 
 	n := getNode(g, nil, []peer{{"peer1", "address1"}})
 	var actualPeers []peer
-	n.d.campaigner = func(c *node) func(peers []peer, currentTerm uint64) {
-		return func(peers []peer, currentTerm uint64) {
+	n.d.chatter.(*mockChatter).campaignStub = func(peers []peer, currentTerm uint64) {
 			actualPeers = peers
-		}
 	}
+
 
 	// trigger the election signal
 	mockTicker.tick()
@@ -223,11 +222,6 @@ func Test_AsACandiateOnElectionSignalTransitionsToAFollower(t *testing.T) {
 	}
 
 	n := getNode(g, nil, []peer{{"peer1", "address1"}})
-
-	n.d.campaigner = func(c *node) func(peers []peer, currentTerm uint64) {
-		return func(peers []peer, currentTerm uint64) {
-		}
-	}
 
 	// trigger the election signal
 	mockTicker.tick()
@@ -261,11 +255,6 @@ func Test_AsACandiateOnGettingARejectedVoteTransitionsToAFollower(t *testing.T) 
 
 	n := getNode(g, nil, []peer{{"peer1", "address1"}})
 
-	n.d.campaigner = func(c *node) func(peers []peer, currentTerm uint64) {
-		return func(peers []peer, currentTerm uint64) {
-		}
-	}
-
 	// trigger the election signal
 	mockTicker.tick()
 	directD := n.d.dispatcher.(*directDispatcher)
@@ -297,11 +286,6 @@ func Test_AsACandiateOnGettingRequisiteVotesTransitionsToALeader(t *testing.T) {
 	}
 
 	n := getNode(g, nil, []peer{{"peer0","address0"},{"peer1", "address1"}})
-
-	n.d.campaigner = func(c *node) func(peers []peer, currentTerm uint64) {
-		return func(peers []peer, currentTerm uint64) {
-		}
-	}
 
 	// trigger the election signal
 	mockTicker.tick()
@@ -335,11 +319,6 @@ func Test_AsACandiateGetsLessThanMajorityVotesDoesNotGetElectedAsLeader(t *testi
 	}
 
 	n := getNode(g, nil, []peer{ {"peer0", "address0"},{"peer1", "address1"},{"peer2","address2"},{"peer3","address3"} })
-
-	n.d.campaigner = func(c *node) func(peers []peer, currentTerm uint64) {
-		return func(peers []peer, currentTerm uint64) {
-		}
-	}
 
 	// trigger the election signal
 	mockTicker.tick()

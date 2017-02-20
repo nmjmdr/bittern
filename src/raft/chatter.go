@@ -1,6 +1,11 @@
 package raft
 
-type campaigner func(n *node) func(peers []peer, currentTerm uint64)
+
+type chatter interface {
+	campaign(peers []peer, currentTerm uint64)
+}
+
+
 
 func noCampaigner(c* node) func(peers []peer,currentTerm uint64) {
 	return func(peers []peer,currentTerm uint64) {

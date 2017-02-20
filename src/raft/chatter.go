@@ -2,6 +2,13 @@ package raft
 
 type campaigner func(n *node) func(peers []peer, currentTerm uint64)
 
+func noCampaigner(c* node) func(peers []peer,currentTerm uint64) {
+	return func(peers []peer,currentTerm uint64) {
+
+	}
+}
+
+/*
 func parallelCampaigner(c *node) func(peers []peer, currentTerm uint64) {
 	return func(peers []peer, currentTerm uint64) {
 		vReq := voteRequest{c.Id(), currentTerm}
@@ -21,3 +28,4 @@ func parallelCampaigner(c *node) func(peers []peer, currentTerm uint64) {
 		}
 	}
 }
+*/

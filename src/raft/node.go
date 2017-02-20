@@ -13,7 +13,6 @@ type depends struct {
 	store         store
 	getTicker     getTickerFn
 	peersExplorer peersExplorer
-	transport     transport
 	campaigner    campaigner
 }
 

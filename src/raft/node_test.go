@@ -22,10 +22,8 @@ func getNode(mockTickerFn getTickerFn, store store, peers []peer) *node {
 	if peers == nil {
 		peers = []peer{}
 	}
-	transport := newMockTransport(func(peer peer, vReq voteRequest) (voteResponse, error) {
-		return voteResponse{Success: true, Term: 1, From: "mock"}, nil
-	})
-	return NewNodeWithDI("node-1", depends{dispatcher: d, store: store, getTicker: mockTickerFn, transport: transport, peersExplorer: newSimplePeersExplorer(peers), campaigner: parallelCampaigner})
+
+	return NewNodeWithDI("node-1", depends{dispatcher: d, store: store, getTicker: mockTickerFn, peersExplorer: newSimplePeersExplorer(peers), campaigner: noCampaigner})
 }
 
 func Test_onInitItShouldSetCommitIndexTo0(t *testing.T) {

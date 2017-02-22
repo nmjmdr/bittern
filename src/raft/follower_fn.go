@@ -1,5 +1,8 @@
 package raft
 
+import (
+	//"fmt"
+)
 
 type follower struct {
 	*node
@@ -40,4 +43,31 @@ func (f *follower) gotVote(evt event) {
 func (f *follower) gotVoteRequestRejected(evt event) {
 	// already a a follower, probably a delayed response by a node
 	// ignore
+}
+
+
+func (f *follower) gotRequestForVote(evt event) {
+
+	request := evt.payload.(*voteRequest)
+	currentTerm, ok := f.d.store.getInt(currentTermKey)
+	if !ok {
+		panic("Could not obtain current term key in candidate")
+	}
+	if request.term < currentTerm {
+		// reject
+		f.d.chatter.sendVoteResponse(voteResponse{Success:false,Term:currentTerm,From:f.id})
+		return
+	}
+
+	votedFor, ok := f.d.store.getValue(votedForKey)
+
+	if (ok && votedFor == request.from) || !checkCandidatesLog() {
+		f.d.chatter.sendVoteResponse(voteResponse{Success:false,Term:currentTerm,From:f.id})
+		return
+	}
+
+
+		// grant vote
+	f.d.chatter.sendVoteResponse(voteResponse{Success:true,Term:currentTerm,From:f.id})
+
 }

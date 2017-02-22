@@ -30,6 +30,10 @@ func (d *directDispatcher) dispatch(evt event) {
 		evt.st.stFn.gotVoteRequestRejected(evt)
 	case GotVote:
 		evt.st.stFn.gotVote(evt)
+	case GotRequestForVote:
+		evt.st.stFn.gotRequestForVote(evt)
+	default:
+		panic("Unknown event passed to dispatcher")
 	}
 	// inform that the event was dispatched
 	//d.dispatched <- true

@@ -22,3 +22,7 @@ func (l *leader) gotVote(evt event) {
 func (l *leader) gotVoteRequestRejected(evt event) {
 	//?
 }
+
+func (l *leader) gotRequestForVote(event event) {
+  //?
+}

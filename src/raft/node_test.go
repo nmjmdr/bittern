@@ -356,3 +356,28 @@ func Test_AsACandiateGetsLessThanMajorityVotesDoesNotGetElectedAsLeader(t *testi
 	}
 
 }
+
+func Test_AsAFollowerVotesForACandidateWhenTheTermIsEqualToCurrentTerm(t *testing.T) {
+	n := getNode(nil, nil, nil)
+	currentTerm, ok := n.d.store.getInt(currentTermKey)
+
+	if !ok {
+		t.Fatal("Should have been able to read the current term")
+	}
+
+	var actualVoteResponse voteResponse
+	n.d.chatter.(*mockChatter).sendVoteResponseStub = func (voteResponse voteResponse) {
+		actualVoteResponse = voteResponse
+	}
+	directD := n.d.dispatcher.(*directDispatcher)
+
+	evt := event{evtType:GotRequestForVote,st:n.st,payload:&voteRequest{from:"1",term:currentTerm}}
+	directD.dispatch(evt)
+	directD.awaitSignal()
+	directD.reset()
+
+	if(!actualVoteResponse.Success) {
+		t.Fatal("Should have got a successful vote response")
+	}
+
+}

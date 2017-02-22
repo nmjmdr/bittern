@@ -3,15 +3,9 @@ package raft
 
 type chatter interface {
 	campaign(peers []peer, currentTerm uint64)
+	sendVoteResponse(voteResponse voteResponse)
 }
 
-
-
-func noCampaigner(c* node) func(peers []peer,currentTerm uint64) {
-	return func(peers []peer,currentTerm uint64) {
-
-	}
-}
 
 /*
 func parallelCampaigner(c *node) func(peers []peer, currentTerm uint64) {

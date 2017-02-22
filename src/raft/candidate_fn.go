@@ -1,5 +1,8 @@
 package raft
 
+import (
+	"fmt"
+)
 
 type candidate struct {
 	*node
@@ -53,4 +56,35 @@ func (c *candidate) gotVoteRequestRejected(evt event) {
 		// transition to a follower
 		c.st.stFn = newFollower(c.node)
 	}
+}
+
+func checkCandidatesLog() bool {
+	fmt.Println("Not checking candidate's log!!! check it")
+	return true
+}
+
+func (c *candidate) gotRequestForVote(evt event) {
+	request := evt.payload.(*voteRequest)
+	currentTerm, ok := c.d.store.getInt(currentTermKey)
+	if !ok {
+		panic("Could not obtain current term key in candidate")
+	}
+	if request.term < currentTerm {
+		// reject
+		c.d.chatter.sendVoteResponse(voteResponse{Success:false,Term:currentTerm,From:c.id})
+		return
+	}
+	votedFor, ok := c.d.store.getValue(votedForKey)
+	if ok && votedFor != request.from  && checkCandidatesLog() {
+		// grant vote
+		c.d.chatter.sendVoteResponse(voteResponse{Success:true,Term:currentTerm,From:c.id})
+		// save votedFor
+		c.d.store.setValue(votedForKey,request.from)
+		// do not transition to a follower, it might so happen that,this candidate might ending up
+		// geting required number of votes
+		return
+	}
+
+	c.d.chatter.sendVoteResponse(voteResponse{Success:false,Term:currentTerm,From:c.id})
+	return
 }

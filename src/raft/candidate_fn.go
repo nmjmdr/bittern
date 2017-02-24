@@ -16,7 +16,7 @@ func newCandidate(n *node) *candidate {
 	// vote for self
 	c.votesReceived = c.votesReceived + 1
 	// begins election timer
-	beginElectionTimer(c.d.getTicker,c.d.dispatcher,c.st)
+	beginElectionTimer(c.d.getTimer,c.d.dispatcher,c.st)
 	// TO DO: start requesting vote from peers
 	peers := c.d.peersExplorer.getPeers()
 	currentTerm := getCurrentTerm(c.d.store)

@@ -11,7 +11,7 @@ type Node interface {
 type depends struct {
 	dispatcher    dispatcher
 	store         store
-	getTicker     getTickerFn
+	getTimer     getTimerFn
 	peersExplorer peersExplorer
 	chatter    chatter
 }
@@ -30,8 +30,8 @@ func NewNode(id string) Node {
 	n := NewNodeWithDI(id, depends{
 		dispatcher: newEventLoopdispatcher(),
 		store:      nil,
-		getTicker: func(d time.Duration) Ticker {
-			return newBuiltInTicker(d)
+		getTimer: func(d time.Duration) Timer {
+			return newBuiltInTimer(d)
 		},
 	},
 	)

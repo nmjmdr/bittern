@@ -11,7 +11,7 @@ type follower struct {
 func newFollower(n *node) *follower {
 	f := new(follower)
 	f.node = n
-	beginElectionTimer(f.d.getTicker,f.d.dispatcher,f.st)
+	beginElectionTimer(f.d.getTimer,f.d.dispatcher,f.st)
 	return f
 }
 

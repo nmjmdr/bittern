@@ -6,24 +6,24 @@ import (
 	"time"
 )
 
-var getMockTickerFn getTickerFn = func(d time.Duration) Ticker {
-	return newMockTicker(d)
+var getMockTimerFn getTimerFn = func(d time.Duration) Timer {
+	return newMockTimer(d)
 }
 
-func getNode(mockTickerFn getTickerFn, store store, peers []peer) *node {
+func getNode(mockTimerFn getTimerFn, store store, peers []peer) *node {
 
 	if store == nil {
 		store = newInMemorystore()
 	}
 	d := newDirectDispatcher()
-	if mockTickerFn == nil {
-		mockTickerFn = getMockTickerFn
+	if mockTimerFn == nil {
+		mockTimerFn = getMockTimerFn
 	}
 	if peers == nil {
 		peers = []peer{}
 	}
 
-	return NewNodeWithDI("node-1", depends{dispatcher: d, store: store, getTicker: mockTickerFn, peersExplorer: newSimplePeersExplorer(peers), chatter: newMockChatter()})
+	return NewNodeWithDI("node-1", depends{dispatcher: d, store: store, getTimer: mockTimerFn, peersExplorer: newSimplePeersExplorer(peers), chatter: newMockChatter()})
 }
 
 func Test_onInitItShouldSetCommitIndexTo0(t *testing.T) {
@@ -93,7 +93,7 @@ func Test_OnBootGetsCurrentTermAs0(t *testing.T) {
 func Test_OnInitStartsThedispatcher(t *testing.T) {
 	store := newInMemorystore()
 	d := &directDispatcher{}
-	NewNodeWithDI("node-1", depends{dispatcher: d, store: store, getTicker: getMockTickerFn})
+	NewNodeWithDI("node-1", depends{dispatcher: d, store: store, getTimer: getMockTimerFn})
 
 	if d.started == false {
 		t.Fatal("dispatcher not started")
@@ -102,28 +102,28 @@ func Test_OnInitStartsThedispatcher(t *testing.T) {
 
 func Test_AsAFollowerStartsTheElectionTimer(t *testing.T) {
 	called := false
-	var g getTickerFn = func(d time.Duration) Ticker {
+	var g getTimerFn = func(d time.Duration) Timer {
 		called = true
-		return newMockTicker(d)
+		return newMockTimer(d)
 	}
 
 	getNode(g, nil, nil)
 
 	if called == false {
-		t.Fatal("Mock ticker for election timer not initialized")
+		t.Fatal("Mock timer for election timer not initialized")
 	}
 }
 
 func Test_OnElectionTSignalItShouldIncrementCurrentTerm(t *testing.T) {
-	var mockTicker = newMockTicker(time.Duration(1))
-	var g getTickerFn = func(d time.Duration) Ticker {
-		return mockTicker
+	var mockTimer = newMockTimer(time.Duration(1))
+	var g getTimerFn = func(d time.Duration) Timer {
+		return mockTimer
 	}
 
 	n := getNode(g, nil, nil)
 
 	// trigger the election signal
-	mockTicker.tick()
+	mockTimer.tick()
 	directD := n.d.dispatcher.(*directDispatcher)
 	//<- directD.dispatched
 	directD.awaitSignal()
@@ -141,15 +141,15 @@ func Test_OnElectionTSignalItShouldIncrementCurrentTerm(t *testing.T) {
 }
 
 func Test_OnElectionTSignalItShouldTransitionToACandidate(t *testing.T) {
-	var mockTicker = newMockTicker(time.Duration(1))
-	var g getTickerFn = func(d time.Duration) Ticker {
-		return mockTicker
+	var mockTimer = newMockTimer(time.Duration(1))
+	var g getTimerFn = func(d time.Duration) Timer {
+		return mockTimer
 	}
 
 	n := getNode(g, nil, nil)
 
 	// trigger the election signal
-	mockTicker.tick()
+	mockTimer.tick()
 	directD := n.d.dispatcher.(*directDispatcher)
 	//<- directD.dispatched
 	directD.awaitSignal()
@@ -162,15 +162,15 @@ func Test_OnElectionTSignalItShouldTransitionToACandidate(t *testing.T) {
 
 // Test if candidate votes for self
 func Test_OnTransitionToACandidateItShouldVoteForItself(t *testing.T) {
-	var mockTicker = newMockTicker(time.Duration(1))
-	var g getTickerFn = func(d time.Duration) Ticker {
-		return mockTicker
+	var mockTimer = newMockTimer(time.Duration(1))
+	var g getTimerFn = func(d time.Duration) Timer {
+		return mockTimer
 	}
 
 	n := getNode(g, nil, nil)
 
 	// trigger the election signal
-	mockTicker.tick()
+	mockTimer.tick()
 	directD := n.d.dispatcher.(*directDispatcher)
 	//<- directD.dispatched
 	directD.awaitSignal()
@@ -187,9 +187,9 @@ func Test_OnTransitionToACandidateItShouldVoteForItself(t *testing.T) {
 }
 
 func Test_OnTransitionToACandidateItShouldAskForVotesFromPeers(t *testing.T) {
-	var mockTicker = newMockTicker(time.Duration(1))
-	var g getTickerFn = func(d time.Duration) Ticker {
-		return mockTicker
+	var mockTimer = newMockTimer(time.Duration(1))
+	var g getTimerFn = func(d time.Duration) Timer {
+		return mockTimer
 	}
 
 	n := getNode(g, nil, []peer{{"peer1", "address1"}})
@@ -200,7 +200,7 @@ func Test_OnTransitionToACandidateItShouldAskForVotesFromPeers(t *testing.T) {
 
 
 	// trigger the election signal
-	mockTicker.tick()
+	mockTimer.tick()
 	directD := n.d.dispatcher.(*directDispatcher)
 	//<- directD.dispatched
 	directD.awaitSignal()
@@ -216,15 +216,15 @@ func Test_OnTransitionToACandidateItShouldAskForVotesFromPeers(t *testing.T) {
 }
 
 func Test_AsACandiateOnElectionSignalTransitionsToAFollower(t *testing.T) {
-	var mockTicker = newMockTicker(time.Duration(1))
-	var g getTickerFn = func(d time.Duration) Ticker {
-		return mockTicker
+	var mockTimer= newMockTimer(time.Duration(1))
+	var g getTimerFn = func(d time.Duration) Timer {
+		return mockTimer
 	}
 
 	n := getNode(g, nil, []peer{{"peer1", "address1"}})
 
 	// trigger the election signal
-	mockTicker.tick()
+	mockTimer.tick()
 	directD := n.d.dispatcher.(*directDispatcher)
 	//<- directD.dispatched
 	directD.awaitSignal()
@@ -235,7 +235,7 @@ func Test_AsACandiateOnElectionSignalTransitionsToAFollower(t *testing.T) {
 	}
 
 	// trigger the election signal
-	mockTicker.tick()
+	mockTimer.tick()
 	//<- directD.dispatched
 	directD.awaitSignal()
 	directD.reset()
@@ -248,15 +248,15 @@ func Test_AsACandiateOnElectionSignalTransitionsToAFollower(t *testing.T) {
 
 
 func Test_AsACandiateOnGettingARejectedVoteTransitionsToAFollower(t *testing.T) {
-	var mockTicker = newMockTicker(time.Duration(1))
-	var g getTickerFn = func(d time.Duration) Ticker {
-		return mockTicker
+	var mockTimer = newMockTimer(time.Duration(1))
+	var g getTimerFn = func(d time.Duration) Timer {
+		return mockTimer
 	}
 
 	n := getNode(g, nil, []peer{{"peer1", "address1"}})
 
 	// trigger the election signal
-	mockTicker.tick()
+	mockTimer.tick()
 	directD := n.d.dispatcher.(*directDispatcher)
 	//<- directD.dispatched
 	directD.awaitSignal()
@@ -280,15 +280,15 @@ func Test_AsACandiateOnGettingARejectedVoteTransitionsToAFollower(t *testing.T) 
 }
 
 func Test_AsACandiateOnGettingRequisiteVotesTransitionsToALeader(t *testing.T) {
-	var mockTicker = newMockTicker(time.Duration(1))
-	var g getTickerFn = func(d time.Duration) Ticker {
-		return mockTicker
+	var mockTimer = newMockTimer(time.Duration(1))
+	var g getTimerFn = func(d time.Duration) Timer {
+		return mockTimer
 	}
 
 	n := getNode(g, nil, []peer{{"peer0","address0"},{"peer1", "address1"}})
 
 	// trigger the election signal
-	mockTicker.tick()
+	mockTimer.tick()
 	directD := n.d.dispatcher.(*directDispatcher)
 	//<- directD.dispatched
 	directD.awaitSignal()
@@ -313,15 +313,15 @@ func Test_AsACandiateOnGettingRequisiteVotesTransitionsToALeader(t *testing.T) {
 
 
 func Test_AsACandiateGetsLessThanMajorityVotesDoesNotGetElectedAsLeader(t *testing.T) {
-	var mockTicker = newMockTicker(time.Duration(1))
-	var g getTickerFn = func(d time.Duration) Ticker {
-		return mockTicker
+	var mockTimer = newMockTimer(time.Duration(1))
+	var g getTimerFn = func(d time.Duration) Timer {
+		return mockTimer
 	}
 
 	n := getNode(g, nil, []peer{ {"peer0", "address0"},{"peer1", "address1"},{"peer2","address2"},{"peer3","address3"} })
 
 	// trigger the election signal
-	mockTicker.tick()
+	mockTimer.tick()
 	directD := n.d.dispatcher.(*directDispatcher)
 	//<- directD.dispatched
 	directD.awaitSignal()

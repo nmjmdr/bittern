@@ -14,13 +14,14 @@ type depends struct {
 	getTimer      getTimerFn
 	peersExplorer peersExplorer
 	chatter       chatter
+	time					Time
 }
 
 type node struct {
 	id                   string
 	st                   *state
 	d                    depends
-	lastHeardFromALeader uint64
+	lastHeardFromALeader int64
 }
 
 func (n *node) Id() string {
@@ -34,6 +35,7 @@ func NewNode(id string) Node {
 		getTimer: func(d time.Duration) Timer {
 			return newBuiltInTimer(d)
 		},
+		time: new(machineTime),
 	},
 	)
 	return n

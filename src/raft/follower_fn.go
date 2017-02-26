@@ -1,7 +1,7 @@
 package raft
 
 import (
-//"fmt"
+"fmt"
 )
 
 type follower struct {
@@ -16,6 +16,12 @@ func newFollower(n *node) *follower {
 }
 
 func (f *follower) gotElectionSignal() {
+	if haveHeardFromALeader(f.d.time,f.node.lastHeardFromALeader) {
+		// begin the next election timer and return
+		beginElectionTimer(f.d.getTimer,f.d.dispatcher,f.st)
+		return;
+	}
+
 	// we do not need worry about whether
 	// a. Should we increment the term and then transition to a canidate
 	// or b. should we transition to a candidate and then increment the term

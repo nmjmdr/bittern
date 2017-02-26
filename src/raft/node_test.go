@@ -12,6 +12,7 @@ var getMockTimerFn getTimerFn = func(d time.Duration) Timer {
 
 func getNode(mockTimerFn getTimerFn, store store, peers []peer) *node {
 
+
 	if store == nil {
 		store = newInMemorystore()
 	}
@@ -23,7 +24,7 @@ func getNode(mockTimerFn getTimerFn, store store, peers []peer) *node {
 		peers = []peer{}
 	}
 
-	return NewNodeWithDI("node-1", depends{dispatcher: d, store: store, getTimer: mockTimerFn, peersExplorer: newSimplePeersExplorer(peers), chatter: newMockChatter()})
+	return NewNodeWithDI("node-1", depends{dispatcher: d, store: store, getTimer: mockTimerFn, peersExplorer: newSimplePeersExplorer(peers), chatter: newMockChatter(),time: newMockTime(electionTimeSpan + 10)})
 }
 
 func Test_onInitItShouldSetCommitIndexTo0(t *testing.T) {
@@ -114,7 +115,7 @@ func Test_AsAFollowerStartsTheElectionTimer(t *testing.T) {
 	}
 }
 
-func Test_OnElectionTSignalItShouldIncrementCurrentTerm(t *testing.T) {
+func Test_OnElectionSignalItShouldIncrementCurrentTerm(t *testing.T) {
 	var mockTimer = newMockTimer(time.Duration(1))
 	var g getTimerFn = func(d time.Duration) Timer {
 		return mockTimer
@@ -140,7 +141,7 @@ func Test_OnElectionTSignalItShouldIncrementCurrentTerm(t *testing.T) {
 	}
 }
 
-func Test_OnElectionTSignalItShouldTransitionToACandidate(t *testing.T) {
+func Test_OnElectionSignalItShouldTransitionToACandidate(t *testing.T) {
 	var mockTimer = newMockTimer(time.Duration(1))
 	var g getTimerFn = func(d time.Duration) Timer {
 		return mockTimer
@@ -476,5 +477,36 @@ func Test_AsAFollowerDoesVoteForACandidateWhenItHasAlreadyVotedForAnotherPeerFor
 
 	if !actualVoteResponse.Success {
 		t.Fatal("Should have got a successful vote response")
+	}
+}
+
+
+
+func Test_AsAFollowerWhenItGetsAnElectionTimeoutAndItHasHeaderFromTheLeaderWithinElectionTimeoutItContinuesAsAFollower(t *testing.T) {
+
+	called := 0
+	var g getTimerFn = func(d time.Duration) Timer {
+		called = called + 1
+		return newMockTimer(d)
+	}
+
+	n := getNode(g, nil, nil)
+	n.d.time = newMockTime((n.lastHeardFromALeader  - electionTimeSpan))
+
+
+
+	directD := n.d.dispatcher.(*directDispatcher)
+
+	evt := event{evtType: GotElectionSignal, st: n.st, payload: nil}
+	directD.dispatch(evt)
+	directD.awaitSignal()
+	directD.reset()
+
+	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*follower)(nil)) {
+		t.Fatal("Should still have remained as a follower, as it did hear from the leader")
+	}
+
+	if called < 2 {
+		t.Fatal("Should have invoked the election timer function more than once")
 	}
 }

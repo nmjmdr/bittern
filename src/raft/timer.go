@@ -21,7 +21,7 @@ func newBuiltInTimer(d time.Duration) Timer {
 	b.ch = make(chan time.Time)
 	b.t = time.NewTimer(d)
 	go func() {
-		time :=  <-b.t.C
+		time := <-b.t.C
 		b.ch <- time
 	}()
 	return b

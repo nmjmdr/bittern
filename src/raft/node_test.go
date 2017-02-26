@@ -195,9 +195,8 @@ func Test_OnTransitionToACandidateItShouldAskForVotesFromPeers(t *testing.T) {
 	n := getNode(g, nil, []peer{{"peer1", "address1"}})
 	var actualPeers []peer
 	n.d.chatter.(*mockChatter).campaignStub = func(peers []peer, currentTerm uint64) {
-			actualPeers = peers
+		actualPeers = peers
 	}
-
 
 	// trigger the election signal
 	mockTimer.tick()
@@ -216,7 +215,7 @@ func Test_OnTransitionToACandidateItShouldAskForVotesFromPeers(t *testing.T) {
 }
 
 func Test_AsACandiateOnElectionSignalTransitionsToAFollower(t *testing.T) {
-	var mockTimer= newMockTimer(time.Duration(1))
+	var mockTimer = newMockTimer(time.Duration(1))
 	var g getTimerFn = func(d time.Duration) Timer {
 		return mockTimer
 	}
@@ -246,7 +245,6 @@ func Test_AsACandiateOnElectionSignalTransitionsToAFollower(t *testing.T) {
 
 }
 
-
 func Test_AsACandiateOnGettingARejectedVoteTransitionsToAFollower(t *testing.T) {
 	var mockTimer = newMockTimer(time.Duration(1))
 	var g getTimerFn = func(d time.Duration) Timer {
@@ -269,7 +267,7 @@ func Test_AsACandiateOnGettingARejectedVoteTransitionsToAFollower(t *testing.T) 
 	if !ok {
 		t.Fatal("Could not get current term")
 	}
-	directD.dispatch(event{evtType:GotVoteRequestRejected,st:n.st,payload:&voteResponse{Success:false,Term:(term+1),From:"peer1"}})
+	directD.dispatch(event{evtType: GotVoteRequestRejected, st: n.st, payload: &voteResponse{Success: false, Term: (term + 1), From: "peer1"}})
 	directD.awaitSignal()
 	directD.reset()
 
@@ -285,7 +283,7 @@ func Test_AsACandiateOnGettingRequisiteVotesTransitionsToALeader(t *testing.T) {
 		return mockTimer
 	}
 
-	n := getNode(g, nil, []peer{{"peer0","address0"},{"peer1", "address1"}})
+	n := getNode(g, nil, []peer{{"peer0", "address0"}, {"peer1", "address1"}})
 
 	// trigger the election signal
 	mockTimer.tick()
@@ -301,7 +299,7 @@ func Test_AsACandiateOnGettingRequisiteVotesTransitionsToALeader(t *testing.T) {
 	if !ok {
 		t.Fatal("Could not get current term")
 	}
-	directD.dispatch(event{evtType:GotVote,st:n.st,payload:&voteResponse{Success:true,Term:(term),From:"peer1"}})
+	directD.dispatch(event{evtType: GotVote, st: n.st, payload: &voteResponse{Success: true, Term: (term), From: "peer1"}})
 	directD.awaitSignal()
 	directD.reset()
 
@@ -311,14 +309,13 @@ func Test_AsACandiateOnGettingRequisiteVotesTransitionsToALeader(t *testing.T) {
 
 }
 
-
 func Test_AsACandiateGetsLessThanMajorityVotesDoesNotGetElectedAsLeader(t *testing.T) {
 	var mockTimer = newMockTimer(time.Duration(1))
 	var g getTimerFn = func(d time.Duration) Timer {
 		return mockTimer
 	}
 
-	n := getNode(g, nil, []peer{ {"peer0", "address0"},{"peer1", "address1"},{"peer2","address2"},{"peer3","address3"} })
+	n := getNode(g, nil, []peer{{"peer0", "address0"}, {"peer1", "address1"}, {"peer2", "address2"}, {"peer3", "address3"}})
 
 	// trigger the election signal
 	mockTimer.tick()
@@ -337,19 +334,18 @@ func Test_AsACandiateGetsLessThanMajorityVotesDoesNotGetElectedAsLeader(t *testi
 	}
 
 	// a no from peer1 and peer2
-	directD.dispatch(event{evtType:GotVoteRequestRejected,st:n.st,payload:&voteResponse{Success:false,Term:(term),From:"peer1"}})
+	directD.dispatch(event{evtType: GotVoteRequestRejected, st: n.st, payload: &voteResponse{Success: false, Term: (term), From: "peer1"}})
 	directD.awaitSignal()
 	directD.reset()
 
-	directD.dispatch(event{evtType:GotVoteRequestRejected,st:n.st,payload:&voteResponse{Success:false,Term:(term),From:"peer2"}})
+	directD.dispatch(event{evtType: GotVoteRequestRejected, st: n.st, payload: &voteResponse{Success: false, Term: (term), From: "peer2"}})
 	directD.awaitSignal()
 	directD.reset()
 
 	// a yes from peer3
-	directD.dispatch(event{evtType:GotVote,st:n.st,payload:&voteResponse{Success:true,Term:(term),From:"peer3"}})
+	directD.dispatch(event{evtType: GotVote, st: n.st, payload: &voteResponse{Success: true, Term: (term), From: "peer3"}})
 	directD.awaitSignal()
 	directD.reset()
-
 
 	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*candidate)(nil)) {
 		t.Fatal("Should still have remained as a candidate, after getting less than majority votes")
@@ -366,17 +362,17 @@ func Test_AsAFollowerVotesForACandidateWhenTheTermIsEqualToCurrentTerm(t *testin
 	}
 
 	var actualVoteResponse voteResponse
-	n.d.chatter.(*mockChatter).sendVoteResponseStub = func (voteResponse voteResponse) {
+	n.d.chatter.(*mockChatter).sendVoteResponseStub = func(voteResponse voteResponse) {
 		actualVoteResponse = voteResponse
 	}
 	directD := n.d.dispatcher.(*directDispatcher)
 
-	evt := event{evtType:GotRequestForVote,st:n.st,payload:&voteRequest{from:"1",term:currentTerm}}
+	evt := event{evtType: GotRequestForVote, st: n.st, payload: &voteRequest{from: "1", term: currentTerm}}
 	directD.dispatch(evt)
 	directD.awaitSignal()
 	directD.reset()
 
-	if(!actualVoteResponse.Success) {
+	if !actualVoteResponse.Success {
 		t.Fatal("Should have got a successful vote response")
 	}
 }
@@ -390,17 +386,17 @@ func Test_AsAFollowerDoesVoteForACandidateWhenTheTermIsGreaterThanToCurrentTerm(
 	}
 
 	var actualVoteResponse voteResponse
-	n.d.chatter.(*mockChatter).sendVoteResponseStub = func (voteResponse voteResponse) {
+	n.d.chatter.(*mockChatter).sendVoteResponseStub = func(voteResponse voteResponse) {
 		actualVoteResponse = voteResponse
 	}
 	directD := n.d.dispatcher.(*directDispatcher)
 
-	evt := event{evtType:GotRequestForVote,st:n.st,payload:&voteRequest{from:"1",term:(currentTerm+1)}}
+	evt := event{evtType: GotRequestForVote, st: n.st, payload: &voteRequest{from: "1", term: (currentTerm + 1)}}
 	directD.dispatch(evt)
 	directD.awaitSignal()
 	directD.reset()
 
-	if(!actualVoteResponse.Success) {
+	if !actualVoteResponse.Success {
 		t.Fatal("Should have got a successful vote response")
 	}
 }
@@ -408,25 +404,25 @@ func Test_AsAFollowerDoesVoteForACandidateWhenTheTermIsGreaterThanToCurrentTerm(
 func Test_AsAFollowerDoesNotVoteForACandidateWhenItHasAlreadyVotedForAnotherPeerInTheSameTerm(t *testing.T) {
 	n := getNode(nil, nil, nil)
 	currentTerm, ok := n.d.store.getInt(currentTermKey)
-	n.d.store.setValue(votedForKey,"peer2")
-	n.d.store.setInt(voteGrantedInTermKey,currentTerm)
+	n.d.store.setValue(votedForKey, "peer2")
+	n.d.store.setInt(voteGrantedInTermKey, currentTerm)
 
 	if !ok {
 		t.Fatal("Should have been able to read the current term")
 	}
 
 	var actualVoteResponse voteResponse
-	n.d.chatter.(*mockChatter).sendVoteResponseStub = func (voteResponse voteResponse) {
+	n.d.chatter.(*mockChatter).sendVoteResponseStub = func(voteResponse voteResponse) {
 		actualVoteResponse = voteResponse
 	}
 	directD := n.d.dispatcher.(*directDispatcher)
 
-	evt := event{evtType:GotRequestForVote,st:n.st,payload:&voteRequest{from:"1",term:(currentTerm)}}
+	evt := event{evtType: GotRequestForVote, st: n.st, payload: &voteRequest{from: "1", term: (currentTerm)}}
 	directD.dispatch(evt)
 	directD.awaitSignal()
 	directD.reset()
 
-	if(actualVoteResponse.Success) {
+	if actualVoteResponse.Success {
 		t.Fatal("Should NOT have got a successful vote response")
 	}
 }
@@ -434,52 +430,51 @@ func Test_AsAFollowerDoesNotVoteForACandidateWhenItHasAlreadyVotedForAnotherPeer
 func Test_AsAFollowerDoesVoteForACandidateWhenItHasPreviouslyVotedForTheSameInTheSameTerm(t *testing.T) {
 	n := getNode(nil, nil, nil)
 	currentTerm, ok := n.d.store.getInt(currentTermKey)
-	n.d.store.setValue(votedForKey,"1")
-	n.d.store.setInt(voteGrantedInTermKey,currentTerm)
+	n.d.store.setValue(votedForKey, "1")
+	n.d.store.setInt(voteGrantedInTermKey, currentTerm)
 
 	if !ok {
 		t.Fatal("Should have been able to read the current term")
 	}
 
 	var actualVoteResponse voteResponse
-	n.d.chatter.(*mockChatter).sendVoteResponseStub = func (voteResponse voteResponse) {
+	n.d.chatter.(*mockChatter).sendVoteResponseStub = func(voteResponse voteResponse) {
 		actualVoteResponse = voteResponse
 	}
 	directD := n.d.dispatcher.(*directDispatcher)
 
-	evt := event{evtType:GotRequestForVote,st:n.st,payload:&voteRequest{from:"1",term:(currentTerm)}}
+	evt := event{evtType: GotRequestForVote, st: n.st, payload: &voteRequest{from: "1", term: (currentTerm)}}
 	directD.dispatch(evt)
 	directD.awaitSignal()
 	directD.reset()
 
-	if(!actualVoteResponse.Success) {
+	if !actualVoteResponse.Success {
 		t.Fatal("Should have got a successful vote response")
 	}
 }
 
-
 func Test_AsAFollowerDoesVoteForACandidateWhenItHasAlreadyVotedForAnotherPeerForAPreviousTerm(t *testing.T) {
 	n := getNode(nil, nil, nil)
 	currentTerm, ok := n.d.store.getInt(currentTermKey)
-	n.d.store.setValue(votedForKey,"peer2")
-	n.d.store.setInt(voteGrantedInTermKey,currentTerm)
+	n.d.store.setValue(votedForKey, "peer2")
+	n.d.store.setInt(voteGrantedInTermKey, currentTerm)
 
 	if !ok {
 		t.Fatal("Should have been able to read the current term")
 	}
 
 	var actualVoteResponse voteResponse
-	n.d.chatter.(*mockChatter).sendVoteResponseStub = func (voteResponse voteResponse) {
+	n.d.chatter.(*mockChatter).sendVoteResponseStub = func(voteResponse voteResponse) {
 		actualVoteResponse = voteResponse
 	}
 	directD := n.d.dispatcher.(*directDispatcher)
 
-	evt := event{evtType:GotRequestForVote,st:n.st,payload:&voteRequest{from:"1",term:(currentTerm+1)}}
+	evt := event{evtType: GotRequestForVote, st: n.st, payload: &voteRequest{from: "1", term: (currentTerm + 1)}}
 	directD.dispatch(evt)
 	directD.awaitSignal()
 	directD.reset()
 
-	if(!actualVoteResponse.Success) {
+	if !actualVoteResponse.Success {
 		t.Fatal("Should have got a successful vote response")
 	}
 }

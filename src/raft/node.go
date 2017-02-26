@@ -11,15 +11,16 @@ type Node interface {
 type depends struct {
 	dispatcher    dispatcher
 	store         store
-	getTimer     getTimerFn
+	getTimer      getTimerFn
 	peersExplorer peersExplorer
-	chatter    chatter
+	chatter       chatter
 }
 
 type node struct {
-	id string
-	st *state
-	d  depends
+	id                   string
+	st                   *state
+	d                    depends
+	lastHeardFromALeader uint64
 }
 
 func (n *node) Id() string {

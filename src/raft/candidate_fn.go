@@ -16,7 +16,7 @@ func newCandidate(n *node) *candidate {
 	// vote for self
 	c.votesReceived = c.votesReceived + 1
 	// begins election timer
-	beginElectionTimer(c.d.getTimer,c.d.dispatcher,c.st)
+	beginElectionTimer(c.d.getTimer, c.d.dispatcher, c.st)
 	// TO DO: start requesting vote from peers
 	peers := c.d.peersExplorer.getPeers()
 	currentTerm := getCurrentTerm(c.d.store)
@@ -37,7 +37,7 @@ func (c *candidate) gotVote(evt event) {
 	peers := c.d.peersExplorer.getPeers()
 	c.votesReceived = c.votesReceived + 1
 	// have received a majority of the votes
-	if c.votesReceived >= ((len(peers)/2) + 1) {
+	if c.votesReceived >= ((len(peers) / 2) + 1) {
 		// transition to a leader
 		c.st.stFn = newLeader(c.node)
 	}
@@ -64,5 +64,5 @@ func checkCandidatesLog() bool {
 }
 
 func (c *candidate) gotRequestForVote(evt event) {
-	respondToVoteRequest(evt,c.node)
+	respondToVoteRequest(evt, c.node)
 }

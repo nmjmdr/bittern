@@ -1,7 +1,7 @@
 package raft
 
 import (
-	//"fmt"
+//"fmt"
 )
 
 type follower struct {
@@ -11,7 +11,7 @@ type follower struct {
 func newFollower(n *node) *follower {
 	f := new(follower)
 	f.node = n
-	beginElectionTimer(f.d.getTimer,f.d.dispatcher,f.st)
+	beginElectionTimer(f.d.getTimer, f.d.dispatcher, f.st)
 	return f
 }
 
@@ -45,7 +45,6 @@ func (f *follower) gotVoteRequestRejected(evt event) {
 	// ignore
 }
 
-
 func (f *follower) gotRequestForVote(evt event) {
-	respondToVoteRequest(evt,f.node)
+	respondToVoteRequest(evt, f.node)
 }

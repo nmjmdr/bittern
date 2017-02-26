@@ -3,19 +3,20 @@ package raft
 import (
 	"sync"
 )
+
 // a dummy dispatcher used for testing
 type directDispatcher struct {
 	started bool
 	//dispatched chan bool
 	signalled bool
-	cond *sync.Cond
+	cond      *sync.Cond
 }
 
 func newDirectDispatcher() *directDispatcher {
 	d := new(directDispatcher)
 	//d.dispatched = make(chan bool)
 	d.cond = sync.NewCond(&sync.Mutex{})
-	return d;
+	return d
 }
 
 func (d *directDispatcher) start() {
@@ -56,7 +57,6 @@ func (d *directDispatcher) reset() {
 	d.signalled = false
 	d.cond.L.Unlock()
 }
-
 
 func (d *directDispatcher) stop() {
 	d.started = false

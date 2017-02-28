@@ -3,6 +3,7 @@ package raft
 type chatter interface {
 	campaign(peers []peer, currentTerm uint64)
 	sendVoteResponse(voteResponse voteResponse)
+	sendAppendEntryResponse(entryResponse entryResponse)
 }
 
 /*
@@ -16,7 +17,7 @@ func parallelCampaigner(c *node) func(peers []peer, currentTerm uint64) {
 					// log and return
 					return
 				}
-				if vRes.Success {
+				if vRes.success {
 					c.d.dispatcher.dispatch(event{GotVote, c.st, vRes})
 				} else {
 					c.d.dispatcher.dispatch(event{GotVoteRequestRejected, c.st, vRes})

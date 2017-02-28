@@ -33,6 +33,8 @@ func (d *directDispatcher) dispatch(evt event) {
 		evt.st.stFn.gotVote(evt)
 	case GotRequestForVote:
 		evt.st.stFn.gotRequestForVote(evt)
+	case AppendEntry:
+		evt.st.stFn.appendEntry(evt)
 	default:
 		panic("Unknown event passed to dispatcher")
 	}

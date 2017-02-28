@@ -1,7 +1,7 @@
 package raft
 
 import (
-"fmt"
+	"fmt"
 )
 
 type follower struct {
@@ -16,10 +16,10 @@ func newFollower(n *node) *follower {
 }
 
 func (f *follower) gotElectionSignal() {
-	if haveHeardFromALeader(f.d.time,f.node.lastHeardFromALeader) {
+	if haveHeardFromALeader(f.d.time, f.node.lastHeardFromALeader) {
 		// begin the next election timer and return
-		beginElectionTimer(f.d.getTimer,f.d.dispatcher,f.st)
-		return;
+		beginElectionTimer(f.d.getTimer, f.d.dispatcher, f.st)
+		return
 	}
 
 	// we do not need worry about whether
@@ -53,4 +53,16 @@ func (f *follower) gotVoteRequestRejected(evt event) {
 
 func (f *follower) gotRequestForVote(evt event) {
 	respondToVoteRequest(evt, f.node)
+}
+
+func checkLog() bool {
+	// check log according to: raft paper: Reply false if log doesn’t contain an entry at prevLogIndex
+	// whose term matches prevLogTerm (§5.3)
+	fmt.Println("Check log according to raft paper 5.3!!!!")
+	return true
+}
+
+func (f *follower) appendEntry(evt event) {
+	// need to encapsulate this to a function
+	processAppendEntry(f.node, evt.payload.(*entryRequest))
 }

@@ -5,4 +5,5 @@ type stateFunction interface {
 	gotVote(evt event)
 	gotVoteRequestRejected(evt event)
 	gotRequestForVote(evt event)
+	appendEntry(evt event)
 }

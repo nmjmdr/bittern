@@ -52,7 +52,7 @@ func (c *candidate) gotVoteRequestRejected(evt event) {
 		panic("Could not obtain current term key in candidate")
 	}
 	vr := evt.payload.(*voteResponse)
-	if currentTerm < vr.Term {
+	if currentTerm < vr.term {
 		// transition to a follower
 		c.st.stFn = newFollower(c.node)
 	}
@@ -65,4 +65,11 @@ func checkCandidatesLog() bool {
 
 func (c *candidate) gotRequestForVote(evt event) {
 	respondToVoteRequest(evt, c.node)
+}
+
+func (c *candidate) appendEntry(evt event) {
+	entryAccepted := processAppendEntry(c.node, evt.payload.(*entryRequest))
+	if entryAccepted {
+		c.st.stFn = newFollower(c.node)
+	}
 }

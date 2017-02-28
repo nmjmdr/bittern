@@ -7,14 +7,14 @@ func respondToVoteRequest(evt event, n *node) {
 		panic("Could not obtain current term key in candidate")
 	}
 	if request.term < currentTerm {
-		n.d.chatter.sendVoteResponse(voteResponse{Success: false, Term: currentTerm, From: n.id})
+		n.d.chatter.sendVoteResponse(voteResponse{success: false, term: currentTerm, from: n.id})
 		return
 	}
 
 	votedFor := getVotedFor(request.term, n.d.store)
 
 	if (votedFor == "" || votedFor == request.from) && checkCandidatesLog() {
-		n.d.chatter.sendVoteResponse(voteResponse{Success: true, Term: currentTerm, From: n.id})
+		n.d.chatter.sendVoteResponse(voteResponse{success: true, term: currentTerm, from: n.id})
 		setVotedFor(request.term, request.from, n.d.store)
 		return
 	}

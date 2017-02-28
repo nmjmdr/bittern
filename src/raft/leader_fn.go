@@ -27,3 +27,6 @@ func (l *leader) gotRequestForVote(evt event) {
 	// if the candidate gets elected, the leader steps down
 	respondToVoteRequest(evt, l.node)
 }
+
+func (l *leader) appendEntry(evt event) {
+}

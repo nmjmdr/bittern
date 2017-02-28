@@ -12,7 +12,6 @@ var getMockTimerFn getTimerFn = func(d time.Duration) Timer {
 
 func getNode(mockTimerFn getTimerFn, store store, peers []peer) *node {
 
-
 	if store == nil {
 		store = newInMemorystore()
 	}
@@ -24,7 +23,7 @@ func getNode(mockTimerFn getTimerFn, store store, peers []peer) *node {
 		peers = []peer{}
 	}
 
-	return NewNodeWithDI("node-1", depends{dispatcher: d, store: store, getTimer: mockTimerFn, peersExplorer: newSimplePeersExplorer(peers), chatter: newMockChatter(),time: newMockTime(electionTimeSpan + 10)})
+	return NewNodeWithDI("node-1", depends{dispatcher: d, store: store, getTimer: mockTimerFn, peersExplorer: newSimplePeersExplorer(peers), chatter: newMockChatter(), time: newMockTime(electionTimeSpan + 10)})
 }
 
 func Test_onInitItShouldSetCommitIndexTo0(t *testing.T) {
@@ -268,7 +267,7 @@ func Test_AsACandiateOnGettingARejectedVoteTransitionsToAFollower(t *testing.T) 
 	if !ok {
 		t.Fatal("Could not get current term")
 	}
-	directD.dispatch(event{evtType: GotVoteRequestRejected, st: n.st, payload: &voteResponse{Success: false, Term: (term + 1), From: "peer1"}})
+	directD.dispatch(event{evtType: GotVoteRequestRejected, st: n.st, payload: &voteResponse{success: false, term: (term + 1), from: "peer1"}})
 	directD.awaitSignal()
 	directD.reset()
 
@@ -300,7 +299,7 @@ func Test_AsACandiateOnGettingRequisiteVotesTransitionsToALeader(t *testing.T) {
 	if !ok {
 		t.Fatal("Could not get current term")
 	}
-	directD.dispatch(event{evtType: GotVote, st: n.st, payload: &voteResponse{Success: true, Term: (term), From: "peer1"}})
+	directD.dispatch(event{evtType: GotVote, st: n.st, payload: &voteResponse{success: true, term: (term), from: "peer1"}})
 	directD.awaitSignal()
 	directD.reset()
 
@@ -335,16 +334,16 @@ func Test_AsACandiateGetsLessThanMajorityVotesDoesNotGetElectedAsLeader(t *testi
 	}
 
 	// a no from peer1 and peer2
-	directD.dispatch(event{evtType: GotVoteRequestRejected, st: n.st, payload: &voteResponse{Success: false, Term: (term), From: "peer1"}})
+	directD.dispatch(event{evtType: GotVoteRequestRejected, st: n.st, payload: &voteResponse{success: false, term: (term), from: "peer1"}})
 	directD.awaitSignal()
 	directD.reset()
 
-	directD.dispatch(event{evtType: GotVoteRequestRejected, st: n.st, payload: &voteResponse{Success: false, Term: (term), From: "peer2"}})
+	directD.dispatch(event{evtType: GotVoteRequestRejected, st: n.st, payload: &voteResponse{success: false, term: (term), from: "peer2"}})
 	directD.awaitSignal()
 	directD.reset()
 
 	// a yes from peer3
-	directD.dispatch(event{evtType: GotVote, st: n.st, payload: &voteResponse{Success: true, Term: (term), From: "peer3"}})
+	directD.dispatch(event{evtType: GotVote, st: n.st, payload: &voteResponse{success: true, term: (term), from: "peer3"}})
 	directD.awaitSignal()
 	directD.reset()
 
@@ -373,7 +372,7 @@ func Test_AsAFollowerVotesForACandidateWhenTheTermIsEqualToCurrentTerm(t *testin
 	directD.awaitSignal()
 	directD.reset()
 
-	if !actualVoteResponse.Success {
+	if !actualVoteResponse.success {
 		t.Fatal("Should have got a successful vote response")
 	}
 }
@@ -397,7 +396,7 @@ func Test_AsAFollowerDoesVoteForACandidateWhenTheTermIsGreaterThanToCurrentTerm(
 	directD.awaitSignal()
 	directD.reset()
 
-	if !actualVoteResponse.Success {
+	if !actualVoteResponse.success {
 		t.Fatal("Should have got a successful vote response")
 	}
 }
@@ -423,7 +422,7 @@ func Test_AsAFollowerDoesNotVoteForACandidateWhenItHasAlreadyVotedForAnotherPeer
 	directD.awaitSignal()
 	directD.reset()
 
-	if actualVoteResponse.Success {
+	if actualVoteResponse.success {
 		t.Fatal("Should NOT have got a successful vote response")
 	}
 }
@@ -449,7 +448,7 @@ func Test_AsAFollowerDoesVoteForACandidateWhenItHasPreviouslyVotedForTheSameInTh
 	directD.awaitSignal()
 	directD.reset()
 
-	if !actualVoteResponse.Success {
+	if !actualVoteResponse.success {
 		t.Fatal("Should have got a successful vote response")
 	}
 }
@@ -475,14 +474,12 @@ func Test_AsAFollowerDoesVoteForACandidateWhenItHasAlreadyVotedForAnotherPeerFor
 	directD.awaitSignal()
 	directD.reset()
 
-	if !actualVoteResponse.Success {
+	if !actualVoteResponse.success {
 		t.Fatal("Should have got a successful vote response")
 	}
 }
 
-
-
-func Test_AsAFollowerWhenItGetsAnElectionTimeoutAndItHasHeaderFromTheLeaderWithinElectionTimeoutItContinuesAsAFollower(t *testing.T) {
+func Test_AsAFollowerWhenItGetsAnElectionTimeoutAndItHasHeardFromTheLeaderWithinElectionTimeoutItContinuesAsAFollower(t *testing.T) {
 
 	called := 0
 	var g getTimerFn = func(d time.Duration) Timer {
@@ -491,9 +488,7 @@ func Test_AsAFollowerWhenItGetsAnElectionTimeoutAndItHasHeaderFromTheLeaderWithi
 	}
 
 	n := getNode(g, nil, nil)
-	n.d.time = newMockTime((n.lastHeardFromALeader  - electionTimeSpan))
-
-
+	n.d.time = newMockTime((n.lastHeardFromALeader - electionTimeSpan))
 
 	directD := n.d.dispatcher.(*directDispatcher)
 
@@ -509,4 +504,106 @@ func Test_AsAFollowerWhenItGetsAnElectionTimeoutAndItHasHeaderFromTheLeaderWithi
 	if called < 2 {
 		t.Fatal("Should have invoked the election timer function more than once")
 	}
+}
+
+func Test_AsAFollowerWhenItGetsAppendEntryItSetsLastHeardFromALeader(t *testing.T) {
+
+	timeNow := int64(150)
+	n := getNode(nil, nil, nil)
+	n.d.time = newMockTime(timeNow)
+	currentTerm, ok := n.d.store.getInt(currentTermKey)
+	if !ok {
+		t.Fatal("Not able to get current term")
+	}
+	directD := n.d.dispatcher.(*directDispatcher)
+
+	evt := event{evtType: AppendEntry, st: n.st, payload: &entryRequest{term: currentTerm}}
+	directD.dispatch(evt)
+	directD.awaitSignal()
+	directD.reset()
+
+	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*follower)(nil)) {
+		t.Fatal("Should still have remained as a follower, as it did hear from the leader")
+	}
+
+	if n.lastHeardFromALeader != timeNow {
+		t.Fatal("Should have set lastHeardFromALeader to current time")
+	}
+}
+
+func Test_AsAFollowerWhenItGetsAppendEntryItRejectsRequestIfItsTermIsLessThanItsOwnCurrentTerm(t *testing.T) {
+
+	timeNow := int64(150)
+	n := getNode(nil, nil, nil)
+	n.d.time = newMockTime(timeNow)
+	var er entryResponse
+	n.d.chatter.(*mockChatter).sendAppendEntryResponseStub = func(response entryResponse) {
+		er = response
+	}
+	term := uint64(2)
+	n.d.store.setInt(currentTermKey, term)
+
+	directD := n.d.dispatcher.(*directDispatcher)
+
+	evt := event{evtType: AppendEntry, st: n.st, payload: &entryRequest{term: term - 1}}
+	directD.dispatch(evt)
+	directD.awaitSignal()
+	directD.reset()
+
+	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*follower)(nil)) {
+		t.Fatal("Should still have remained as a follower, as it did hear from the leader")
+	}
+
+	if er.success {
+		t.Fatal("Should have rejected the append entry request")
+	}
+
+	if n.lastHeardFromALeader == timeNow {
+		t.Fatal("Should NOT have set lastHeardFromALeader to current time")
+	}
+}
+
+func Test_AsACandiateWhenItGetsAppendEntryItTransitionsToAFollower(t *testing.T) {
+
+	var mockTimer = newMockTimer(time.Duration(1))
+	var g getTimerFn = func(d time.Duration) Timer {
+		return mockTimer
+	}
+
+	n := getNode(g, nil, []peer{{"peer0", "address0"}, {"peer1", "address1"}, {"peer2", "address2"}, {"peer3", "address3"}})
+	n.d.time = newMockTime(electionTimeSpan + 100)
+	var er entryResponse
+	n.d.chatter.(*mockChatter).sendAppendEntryResponseStub = func(response entryResponse) {
+		er = response
+	}
+
+	// trigger the election signal
+	mockTimer.tick()
+	directD := n.d.dispatcher.(*directDispatcher)
+	//<- directD.dispatched
+	directD.awaitSignal()
+	directD.reset()
+
+	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*candidate)(nil)) {
+		t.Fatal("Should have been a candidate, after getting election signal")
+	}
+
+	currentTerm, ok := n.d.store.getInt(currentTermKey)
+	if !ok {
+		t.Fatal("Not able to get current term")
+	}
+
+	evt := event{evtType: AppendEntry, st: n.st, payload: &entryRequest{term: currentTerm}}
+	directD.dispatch(evt)
+	directD.awaitSignal()
+	directD.reset()
+
+	if reflect.TypeOf(n.st.stFn) != reflect.TypeOf((*follower)(nil)) {
+		t.Fatal("Should have transitioned to a follower, as it did hear from a leader")
+	}
+
+	if !er.success {
+		t.Fatal("Should NOT have rejected the append entry request")
+	}
+
 }

@@ -1,16 +1,16 @@
 package raft
 
 import (
-  "time"
+	"time"
 )
 
 type Time interface {
-  unixNano() int64
+	unixNano() int64
 }
 
 type machineTime struct {
 }
 
 func (m *machineTime) unixNano() int64 {
-  return time.Now().UnixNano()
+	return time.Now().UnixNano()
 }

@@ -14,7 +14,7 @@ type depends struct {
 	getTimer      getTimerFn
 	peersExplorer peersExplorer
 	chatter       chatter
-	time					Time
+	time          Time
 }
 
 type node struct {

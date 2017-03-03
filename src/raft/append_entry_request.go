@@ -1,6 +1,6 @@
 package raft
 
-type entryRequest struct {
+type appendEntryRequest struct {
 	term         uint64
 	leaderId     string
 	prevLogTerm  uint64

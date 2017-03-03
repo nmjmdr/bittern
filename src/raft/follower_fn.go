@@ -64,5 +64,5 @@ func checkLog() bool {
 
 func (f *follower) appendEntry(evt event) {
 	// need to encapsulate this to a function
-	processAppendEntry(f.node, evt.payload.(*entryRequest))
+	processAppendEntry(f.node, evt.payload.(*appendEntryRequest))
 }

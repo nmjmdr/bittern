@@ -1,6 +1,6 @@
 package raft
 
-type entryResponse struct {
+type appendEntryResponse struct {
 	success bool
 	term    uint64
 }

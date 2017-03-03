@@ -3,7 +3,7 @@ package raft
 type chatter interface {
 	campaign(peers []peer, currentTerm uint64)
 	sendVoteResponse(voteResponse voteResponse)
-	sendAppendEntryResponse(entryResponse entryResponse)
+	sendAppendEntryResponse(appendEntryResponse appendEntryResponse)
 }
 
 /*

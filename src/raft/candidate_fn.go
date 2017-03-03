@@ -68,7 +68,7 @@ func (c *candidate) gotRequestForVote(evt event) {
 }
 
 func (c *candidate) appendEntry(evt event) {
-	entryAccepted := processAppendEntry(c.node, evt.payload.(*entryRequest))
+	entryAccepted := processAppendEntry(c.node, evt.payload.(*appendEntryRequest))
 	if entryAccepted {
 		c.st.stFn = newFollower(c.node)
 	}

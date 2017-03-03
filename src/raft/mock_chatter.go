@@ -3,7 +3,7 @@ package raft
 type mockChatter struct {
 	campaignStub                func(peers []peer, currentTerm uint64)
 	sendVoteResponseStub        func(voteResponse voteResponse)
-	sendAppendEntryResponseStub func(entryResponse entryResponse)
+	sendAppendEntryResponseStub func(appendEntryResponse appendEntryResponse)
 }
 
 func newMockChatter() *mockChatter {
@@ -12,7 +12,7 @@ func newMockChatter() *mockChatter {
 	}
 	m.sendVoteResponseStub = func(voteResponse voteResponse) {
 	}
-	m.sendAppendEntryResponseStub = func(entryResponse entryResponse) {
+	m.sendAppendEntryResponseStub = func(appendEntryResponse appendEntryResponse) {
 	}
 	return m
 }
@@ -25,6 +25,6 @@ func (m *mockChatter) sendVoteResponse(voteResponse voteResponse) {
 	m.sendVoteResponseStub(voteResponse)
 }
 
-func (m *mockChatter) sendAppendEntryResponse(entryResponse entryResponse) {
-	m.sendAppendEntryResponseStub(entryResponse)
+func (m *mockChatter) sendAppendEntryResponse(appendEntryResponse appendEntryResponse) {
+	m.sendAppendEntryResponseStub(appendEntryResponse)
 }

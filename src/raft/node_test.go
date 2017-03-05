@@ -7,11 +7,11 @@ import (
 
 func createNode() *node {
   n := newNode()
-  n.dispatcher = newMockDispathcer()
+  n.dispatcher = newMockDispathcer(nil)
   return n
 }
 
-func Test_WhenTheNodeBootsItShouldStartAsAFollower(t *testing.T) {
+func Test_when_the_node_boots_it_should_start_as_a_follower(t *testing.T) {
   n := createNode()
   n.boot()
   if n.st.mode != Follower {
@@ -19,10 +19,23 @@ func Test_WhenTheNodeBootsItShouldStartAsAFollower(t *testing.T) {
   }
 }
 
-func Test_WhenTheNodeBootsItShouldSetTheTermToZero(t *testing.T) {
+func Test_when_the_node_boots_it_should_set_the_term_to_zero(t *testing.T) {
   n := createNode()
   n.boot()
   if n.st.term != 0 {
     t.Fatal("Should have initialized the term to 0")
+  }
+}
+
+
+func Test_when_the_node_boots_it_should_generate_start_follower_event(t *testing.T) {
+  n := createNode()
+  var gotEvent event
+  n.dispatcher.(*mockDispatcher).callback = func (event event) {
+    gotEvent = event
+  }
+  n.boot()
+  if gotEvent.eventType != StartFollower {
+    t.Fatal("Should have generated start follower event")
   }
 }

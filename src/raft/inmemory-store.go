@@ -10,7 +10,7 @@ func newInMemoryStore() *inMemoryStore {
 	return inMem
 }
 
-func (i *inMemoryStore) getInt(key string) (uint64, bool) {
+func (i *inMemoryStore) GetInt(key string) (uint64, bool) {
 	value, ok := i.m[key]
 	if !ok {
 		return uint64(0), false
@@ -18,7 +18,7 @@ func (i *inMemoryStore) getInt(key string) (uint64, bool) {
 	return value.(uint64), true
 }
 
-func (i *inMemoryStore) storeInt(key string, value uint64) {
+func (i *inMemoryStore) StoreInt(key string, value uint64) {
 	i.m[key] = value
 }
 func (i *inMemoryStore) getValue(key string) (string, bool) {
@@ -28,6 +28,6 @@ func (i *inMemoryStore) getValue(key string) (string, bool) {
 	}
 	return value.(string), true
 }
-func (i *inMemoryStore) storeValue(key string, value string) {
+func (i *inMemoryStore) StoreValue(key string, value string) {
 	i.m[key] = value
 }

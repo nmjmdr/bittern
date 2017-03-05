@@ -1,13 +1,13 @@
 package raft
 
 import (
-  "time"
-  "math/rand"
+	"math/rand"
+	"time"
 )
 
 const ElectionTimeoutMax = 150
 const ElectionTimeoutMin = 100
 
 func getRandomizedElectionTimout() time.Duration {
-  return time.Duration((rand.Intn(ElectionTimeoutMax - ElectionTimeoutMin) + ElectionTimeoutMin)) * time.Millisecond
+	return time.Duration((rand.Intn(ElectionTimeoutMax-ElectionTimeoutMin) + ElectionTimeoutMin)) * time.Millisecond
 }

@@ -1,7 +1,7 @@
 package raft
 
 type state struct {
-	mode Mode
+	mode        Mode
 	commitIndex uint64
 	lastApplied uint64
 }

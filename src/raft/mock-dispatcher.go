@@ -1,19 +1,19 @@
 package raft
 
-type dispatchCallbackFn func(event event)
+type DispatchCallbackFn func(event event)
 
 type mockDispatcher struct {
-	callback dispatchCallbackFn
+	callback DispatchCallbackFn
 }
 
-func newMockDispathcer(callback dispatchCallbackFn) *mockDispatcher {
+func newMockDispathcer(callback DispatchCallbackFn) *mockDispatcher {
 	m := new(mockDispatcher)
 	m.callback = callback
 	return m
 }
 
 func (m *mockDispatcher) Dispatch(event event) {
-  if m.callback != nil {
-    m.callback(event)
-  }
+	if m.callback != nil {
+		m.callback(event)
+	}
 }

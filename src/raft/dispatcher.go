@@ -1,5 +1,5 @@
 package raft
 
 type Dispatcher interface {
-  Dispatch(event event)
+	Dispatch(event event)
 }

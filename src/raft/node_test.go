@@ -2,6 +2,7 @@ package raft
 
 import (
 	"testing"
+  "time"
 )
 
 func createNode() *node {
@@ -63,7 +64,7 @@ func Test_when_start_follower_event_is_handled_it_should_start_the_election_time
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 		n.handleEvent(event)
 	}
-	n.followerExpiryTimer.(*mockElectionTimeoutTimer).callback = func() {
+	n.followerExpiryTimer.(*mockElectionTimeoutTimer).callback = func(t time.Duration) {
 		timerStarted = true
 	}
 	n.boot()

@@ -1,8 +1,10 @@
 package raft
 
-import ()
+import (
+  "time"
+)
 
-type ElectionTimeoutTimerStartCallback func()
+type ElectionTimeoutTimerStartCallback func(t time.Duration)
 type mockElectionTimeoutTimer struct {
 	callback ElectionTimeoutTimerStartCallback
 }
@@ -13,8 +15,8 @@ func newMockElectionTimeoutTimer(callback ElectionTimeoutTimerStartCallback) *mo
 	return m
 }
 
-func (m *mockElectionTimeoutTimer) Start() {
+func (m *mockElectionTimeoutTimer) Start(t time.Duration) {
 	if m.callback != nil {
-		m.callback()
+		m.callback(t)
 	}
 }

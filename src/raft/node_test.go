@@ -2,14 +2,18 @@ package raft
 
 import (
 	"testing"
-  "time"
+	"time"
 )
 
 func createNode() *node {
 	n := newNode()
 	n.dispatcher = newMockDispathcer(nil)
 	n.store = newInMemoryStore()
-	n.followerExpiryTimer = newMockElectionTimeoutTimer(nil)
+	n.electionExpiryTimer = newMockElectionTimeoutTimer(nil, nil)
+	delta := int64(20)
+	n.time = newMockTime(func() int64 {
+		return n.electionTimeout - delta
+	})
 	return n
 }
 
@@ -64,11 +68,37 @@ func Test_when_start_follower_event_is_handled_it_should_start_the_election_time
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 		n.handleEvent(event)
 	}
-	n.followerExpiryTimer.(*mockElectionTimeoutTimer).callback = func(t time.Duration) {
+	n.electionExpiryTimer.(*mockElectionTimeoutTimer).startCb = func(t time.Duration) {
 		timerStarted = true
 	}
 	n.boot()
 	if !timerStarted {
 		t.Fatal("Election timeout timer not started")
+	}
+}
+
+func Test_when_the_mode_is_follower_and_election_timer_timesout__and_has_not_heard_from_leader_it_transitions_to_a_candidate(t *testing.T) {
+	n := createNode()
+	n.boot()
+	delta := int64(20)
+	n.time = newMockTime(func ()int64{
+		return n.electionTimeout + delta
+	})
+	startCandidateEventDispatched := false
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		if event.eventType == ElectionTimerTimedout {
+			n.handleEvent(event)
+		} else if event.eventType == StartCandidate {
+			startCandidateEventDispatched = true
+		} else {
+			t.Fatal("Not expecting %d event to be raised",event.eventType)
+		}
+	}
+	n.dispatcher.Dispatch(event{ElectionTimerTimedout,nil})
+	if n.st.mode != Candidate {
+		t.Fatal("Should have been a Candidate")
+	}
+	if !startCandidateEventDispatched {
+		t.Fatal("Shoudl have dispatched StartCandidate event")
 	}
 }

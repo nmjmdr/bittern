@@ -4,7 +4,8 @@ type EventType int
 
 const (
 	StartFollower EventType = iota
-  ElectionTimerTimedout
+	ElectionTimerTimedout
+	StartCandidate
 )
 
 type event struct {

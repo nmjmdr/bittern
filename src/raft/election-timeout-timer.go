@@ -1,9 +1,10 @@
 package raft
 
 import (
-  "time"
+	"time"
 )
 
 type ElectionTimeoutTimer interface {
 	Start(t time.Duration)
+	Stop()
 }

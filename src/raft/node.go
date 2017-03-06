@@ -10,11 +10,13 @@ const CurrentTermKey = "current-term"
 
 type node struct {
 	st                   *state
-	dispatcher           Dispatcher
-	store                Store
-	followerExpiryTimer  ElectionTimeoutTimer
 	lastHeardFromALeader int64
-  electionTimeout int64
+	electionTimeout      int64
+
+	dispatcher          Dispatcher
+	store               Store
+	electionExpiryTimer ElectionTimeoutTimer
+	time                Time
 }
 
 func newNode() *node {
@@ -37,30 +39,35 @@ func (n *node) handleEvent(event event) {
 	switch event.eventType {
 	case StartFollower:
 		n.startFollower(event)
-  case ElectionTimerTimedout:
-    n.electionTimerTimeout(event)
+	case ElectionTimerTimedout:
+		n.electionTimerTimeout(event)
 	default:
 		panic(fmt.Sprintf("Unknown event: %d passed to handleEvent", event.eventType))
 	}
 }
 
-func (n *node) startFollower(event event) {
+func (n *node) startFollower(evt event) {
 	if n.st.mode != Follower {
 		panic("Mode is not set to follower in startFollower")
 	}
-  n.electionTimeout = getRandomizedElectionTimout()
-	n.followerExpiryTimer.Start(time.Duration(n.electionTimeout) * time.Millisecond)
+	n.electionTimeout = getRandomizedElectionTimout()
+	n.electionExpiryTimer.Start(time.Duration(n.electionTimeout) * time.Millisecond)
 }
 
 func (n *node) hasHeardFromALeader() bool {
-  return (time.Now().Unix() - n.lastHeardFromALeader) < n.electionTimeout
+	return (n.time.UnixNow() - n.lastHeardFromALeader) < n.electionTimeout
 }
 
-func (n *node) electionTimerTimeout(event event) {
-  if n.hasHeardFromALeader() {
-    return
-  }
-
-  // TO DO: transition to a candidate
-  
+func (n *node) electionTimerTimeout(evt event) {
+	if n.hasHeardFromALeader() {
+		return
+	}
+	if n.st.mode == Follower {
+		n.st.mode = Candidate
+		n.dispatcher.Dispatch(event{StartCandidate, nil})
+	} else if n.st.mode == Candidate {
+		fmt.Println("Handle candidate election timed out!!!")
+	} else {
+		//???
+	}
 }

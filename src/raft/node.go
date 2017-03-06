@@ -9,9 +9,8 @@ import (
 const CurrentTermKey = "current-term"
 
 type node struct {
-	st                   *state
-	lastHeardFromALeader int64
-	electionTimeout      int64
+	st              *state
+	electionTimeout int64
 
 	dispatcher          Dispatcher
 	store               Store
@@ -41,21 +40,32 @@ func (n *node) handleEvent(event event) {
 		n.startFollower(event)
 	case ElectionTimerTimedout:
 		n.electionTimerTimeout(event)
+	case StartCandidate:
+		n.startCandidate(event)
 	default:
 		panic(fmt.Sprintf("Unknown event: %d passed to handleEvent", event.eventType))
 	}
+}
+
+func (n *node) startElectionTimer() {
+	n.electionTimeout = getRandomizedElectionTimout()
+	n.electionExpiryTimer.Start(time.Duration(n.electionTimeout) * time.Millisecond)
+}
+
+func (n *node) restartElectionTimer() {
+	n.electionExpiryTimer.Stop()
+	n.startElectionTimer()
 }
 
 func (n *node) startFollower(evt event) {
 	if n.st.mode != Follower {
 		panic("Mode is not set to follower in startFollower")
 	}
-	n.electionTimeout = getRandomizedElectionTimout()
-	n.electionExpiryTimer.Start(time.Duration(n.electionTimeout) * time.Millisecond)
+	n.startElectionTimer()
 }
 
 func (n *node) hasHeardFromALeader() bool {
-	return (n.time.UnixNow() - n.lastHeardFromALeader) < n.electionTimeout
+	return (n.time.UnixNow() - n.st.lastHeardFromALeader) < n.electionTimeout
 }
 
 func (n *node) electionTimerTimeout(evt event) {
@@ -66,8 +76,29 @@ func (n *node) electionTimerTimeout(evt event) {
 		n.st.mode = Candidate
 		n.dispatcher.Dispatch(event{StartCandidate, nil})
 	} else if n.st.mode == Candidate {
-		fmt.Println("Handle candidate election timed out!!!")
+		// think about back off from: ARC Heidi Howard - OCAML raft
+		n.st.mode = Candidate
+		n.dispatcher.Dispatch(event{StartCandidate, nil})
 	} else {
-		//???
+		fmt.Println("TO DO: Handle election timer timedout - leader case!")
 	}
+}
+
+func (n *node) campaign() {
+	fmt.Println("TO DO: Start the campaign here")
+}
+
+func (n *node) startCandidate(event event) {
+	if n.st.mode != Candidate {
+		panic("Mode is not set to candidate in startCandidate")
+	}
+	term, ok := n.store.GetInt(CurrentTermKey)
+	if !ok {
+		panic("Not able to to obtain current term in startCandidate")
+	}
+	term = term + 1
+	n.store.StoreInt(CurrentTermKey, term)
+	n.st.votesGot = n.st.votesGot + 1
+	n.restartElectionTimer()
+	n.campaign()
 }

@@ -81,7 +81,7 @@ func Test_when_the_mode_is_follower_and_election_timer_timesout__and_has_not_hea
 	n := createNode()
 	n.boot()
 	delta := int64(20)
-	n.time = newMockTime(func ()int64{
+	n.time = newMockTime(func() int64 {
 		return n.electionTimeout + delta
 	})
 	startCandidateEventDispatched := false
@@ -91,14 +91,42 @@ func Test_when_the_mode_is_follower_and_election_timer_timesout__and_has_not_hea
 		} else if event.eventType == StartCandidate {
 			startCandidateEventDispatched = true
 		} else {
-			t.Fatal("Not expecting %d event to be raised",event.eventType)
+			t.Fatal("Not expecting %d event to be raised", event.eventType)
 		}
 	}
-	n.dispatcher.Dispatch(event{ElectionTimerTimedout,nil})
+	n.dispatcher.Dispatch(event{ElectionTimerTimedout, nil})
 	if n.st.mode != Candidate {
 		t.Fatal("Should have been a Candidate")
 	}
 	if !startCandidateEventDispatched {
-		t.Fatal("Shoudl have dispatched StartCandidate event")
+		t.Fatal("Should have dispatched StartCandidate event")
+	}
+}
+
+
+func Test_when_the_mode_is_candidate_and_election_timer_timesout__and_has_not_heard_from_leader_it_starts_a_candidate_again(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.st.mode = Candidate
+	delta := int64(20)
+	n.time = newMockTime(func() int64 {
+		return n.electionTimeout + delta
+	})
+	startCandidateEventDispatched := false
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		if event.eventType == ElectionTimerTimedout {
+			n.handleEvent(event)
+		} else if event.eventType == StartCandidate {
+			startCandidateEventDispatched = true
+		} else {
+			t.Fatal("Not expecting %d event to be raised", event.eventType)
+		}
+	}
+	n.dispatcher.Dispatch(event{ElectionTimerTimedout, nil})
+	if n.st.mode != Candidate {
+		t.Fatal("Should have been a Candidate")
+	}
+	if !startCandidateEventDispatched {
+		t.Fatal("Should have dispatched StartCandidate event")
 	}
 }

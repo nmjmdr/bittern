@@ -80,7 +80,7 @@ func (n *node) electionTimerTimeout(evt event) {
 		n.st.mode = Candidate
 		n.dispatcher.Dispatch(event{StartCandidate, nil})
 	} else {
-		fmt.Println("TO DO: Handle election timer timedout - leader case!")
+		panic("Received election timer timedout while being a leader")
 	}
 }
 

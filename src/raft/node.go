@@ -16,6 +16,7 @@ type node struct {
 	store               Store
 	electionExpiryTimer ElectionTimeoutTimer
 	time                Time
+	campaigner					Campaigner
 }
 
 func newNode() *node {
@@ -84,10 +85,6 @@ func (n *node) electionTimerTimeout(evt event) {
 	}
 }
 
-func (n *node) campaign() {
-	fmt.Println("TO DO: Start the campaign here")
-}
-
 func (n *node) startCandidate(event event) {
 	if n.st.mode != Candidate {
 		panic("Mode is not set to candidate in startCandidate")
@@ -100,5 +97,5 @@ func (n *node) startCandidate(event event) {
 	n.store.StoreInt(CurrentTermKey, term)
 	n.st.votesGot = n.st.votesGot + 1
 	n.restartElectionTimer()
-	n.campaign()
+	n.campaigner.Campaign(n)
 }

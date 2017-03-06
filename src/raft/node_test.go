@@ -14,6 +14,7 @@ func createNode() *node {
 	n.time = newMockTime(func() int64 {
 		return n.electionTimeout - delta
 	})
+	n.campaigner = newMockCampaigner(nil)
 	return n
 }
 
@@ -128,5 +129,95 @@ func Test_when_the_mode_is_candidate_and_election_timer_timesout__and_has_not_he
 	}
 	if !startCandidateEventDispatched {
 		t.Fatal("Should have dispatched StartCandidate event")
+	}
+}
+
+func Test_when_the_mode_is_candidate_and_start_candidate_is_handled_it_increments_the_current_term(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.st.mode = Candidate
+	previousTerm, ok := n.store.GetInt(CurrentTermKey)
+	if !ok {
+		t.Fatal("Cannot obtain the current term")
+	}
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+			n.handleEvent(event)
+	}
+	n.dispatcher.Dispatch(event{StartCandidate,nil})
+	if n.st.mode != Candidate {
+		t.Fatal("Should have been a Candidate")
+	}
+	var term uint64
+	term,ok = n.store.GetInt(CurrentTermKey)
+	if !ok {
+		t.Fatal("Cannot obtain the current term")
+	}
+	if term != previousTerm + 1 {
+		t.Fatal("It should have incremented the term by 1")
+	}
+}
+
+func Test_when_the_mode_is_candidate_and_start_candidate_is_handled_it_votes_for_itself(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.st.mode = Candidate
+	holdVotesGot := n.st.votesGot
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+			n.handleEvent(event)
+	}
+	n.dispatcher.Dispatch(event{StartCandidate,nil})
+	if n.st.mode != Candidate {
+		t.Fatal("Should have been a Candidate")
+	}
+	votesGot := n.st.votesGot
+	if votesGot != holdVotesGot + 1 {
+		t.Fatal("It should have incremented votesGot by 1")
+	}
+}
+
+func Test_when_the_mode_is_candidate_and_start_candidate_is_handled_it_restarts_election(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.st.mode = Candidate
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+			n.handleEvent(event)
+	}
+	n.dispatcher.Dispatch(event{StartCandidate,nil})
+	if n.st.mode != Candidate {
+		t.Fatal("Should have been a Candidate")
+	}
+	startTimerCalled := false
+	stopTimerCalled := true
+	n.electionExpiryTimer = newMockElectionTimeoutTimer(func(t time.Duration){
+		startTimerCalled = true
+	},func(){
+		stopTimerCalled = true
+	})
+	if !stopTimerCalled {
+		t.Fatal("It should have called stop election timer")
+	}
+	if !startTimerCalled {
+		t.Fatal("It should have called start election timer")
+	}
+}
+
+
+func Test_when_the_mode_is_candidate_and_start_candidate_is_handled_it_starts_the_campaign(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.st.mode = Candidate
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+			n.handleEvent(event)
+	}
+	campaignerCalled := false
+	n.campaigner = newMockCampaigner(func(node *node){
+		campaignerCalled = true
+	})
+	n.dispatcher.Dispatch(event{StartCandidate,nil})
+	if n.st.mode != Candidate {
+		t.Fatal("Should have been a Candidate")
+	}
+	if !campaignerCalled {
+		t.Fatal("It should have called the campaigner")
 	}
 }

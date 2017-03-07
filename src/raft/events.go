@@ -6,6 +6,8 @@ const (
 	StartFollower EventType = iota
 	ElectionTimerTimedout
 	StartCandidate
+	StartLeader
+	GotVote
 )
 
 type event struct {

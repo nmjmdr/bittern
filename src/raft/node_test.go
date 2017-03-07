@@ -10,6 +10,9 @@ func createNode() *node {
 	n.dispatcher = newMockDispathcer(nil)
 	n.store = newInMemoryStore()
 	n.electionExpiryTimer = newMockElectionTimeoutTimer(nil, nil)
+	n.whoArePeers = newMockWhoArePeers(func()[]peer{
+		return []peer{peer{"1"}}
+	})
 	delta := int64(20)
 	n.time = newMockTime(func() int64 {
 		return n.electionTimeout - delta
@@ -179,6 +182,13 @@ func Test_when_the_mode_is_candidate_and_start_candidate_is_handled_it_restarts_
 	n := createNode()
 	n.boot()
 	n.st.mode = Candidate
+	startTimerCalled := false
+	stopTimerCalled := false
+	n.electionExpiryTimer = newMockElectionTimeoutTimer(func(t time.Duration){
+		startTimerCalled = true
+	},func(){
+		stopTimerCalled = true
+	})
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 			n.handleEvent(event)
 	}
@@ -186,13 +196,6 @@ func Test_when_the_mode_is_candidate_and_start_candidate_is_handled_it_restarts_
 	if n.st.mode != Candidate {
 		t.Fatal("Should have been a Candidate")
 	}
-	startTimerCalled := false
-	stopTimerCalled := true
-	n.electionExpiryTimer = newMockElectionTimeoutTimer(func(t time.Duration){
-		startTimerCalled = true
-	},func(){
-		stopTimerCalled = true
-	})
 	if !stopTimerCalled {
 		t.Fatal("It should have called stop election timer")
 	}
@@ -219,5 +222,36 @@ func Test_when_the_mode_is_candidate_and_start_candidate_is_handled_it_starts_th
 	}
 	if !campaignerCalled {
 		t.Fatal("It should have called the campaigner")
+	}
+}
+
+// TO DO: complete this!!!!
+
+func Test_when_the_mode_is_candidate_and_it_gets_majority_votes_it_should_transition_to_a_leader(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.st.mode = Candidate
+	startLeaderEventGenerated := false
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		if event.eventType == StartLeader {
+			startLeaderEventGenerated = true
+		} else {
+			n.handleEvent(event)
+		}
+	}
+	peers := []peer{peer{"1"},peer{"2"},peer{"3"}};
+	n.whoArePeers = newMockWhoArePeers(func()[]peer {
+		return peers
+	})
+	// start Candidate so that it votes for itself
+	n.dispatcher.Dispatch(event{StartCandidate,nil})
+	if n.st.votesGot != 1 {
+		t.Fatal("A node in candidate mode, should have voted for itself")
+	}
+	for i:=0;i<len(peers)-1;i++ {
+		n.dispatcher.Dispatch(event{GotVote,nil})
+	}
+	if !startLeaderEventGenerated {
+		t.Fatal("Should have got elected as a leader")
 	}
 }

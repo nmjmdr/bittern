@@ -17,6 +17,7 @@ type node struct {
 	electionExpiryTimer ElectionTimeoutTimer
 	time                Time
 	campaigner					Campaigner
+	whoArePeers					WhoArePeers
 }
 
 func newNode() *node {
@@ -43,6 +44,8 @@ func (n *node) handleEvent(event event) {
 		n.electionTimerTimeout(event)
 	case StartCandidate:
 		n.startCandidate(event)
+	case GotVote:
+		n.gotVote(event)
 	default:
 		panic(fmt.Sprintf("Unknown event: %d passed to handleEvent", event.eventType))
 	}
@@ -98,4 +101,22 @@ func (n *node) startCandidate(event event) {
 	n.st.votesGot = n.st.votesGot + 1
 	n.restartElectionTimer()
 	n.campaigner.Campaign(n)
+}
+
+func (n *node) gotMajority() bool {
+	peers := n.whoArePeers.All()
+	return n.st.votesGot >= (len(peers)/2 + 1)
+}
+
+func (n *node) gotVote(evt event) {
+	if n.st.mode != Candidate {
+		// must be a delayed vote by a node, ignore it
+		return
+	}
+	n.st.votesGot = n.st.votesGot + 1
+	if n.gotMajority() {
+		n.st.mode = Leader
+		// what else needs to be done here?
+		n.dispatcher.Dispatch(event{StartLeader,nil})
+	}
 }

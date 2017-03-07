@@ -16,8 +16,8 @@ type node struct {
 	store               Store
 	electionExpiryTimer ElectionTimeoutTimer
 	time                Time
-	campaigner					Campaigner
-	whoArePeers					WhoArePeers
+	campaigner          Campaigner
+	whoArePeers         WhoArePeers
 }
 
 func newNode() *node {
@@ -113,10 +113,29 @@ func (n *node) gotVote(evt event) {
 		// must be a delayed vote by a node, ignore it
 		return
 	}
+	voteResponse := evt.payload.(*voteResponse)
+	if voteResponse.success {
+		n.handleSuccessfulVoteResponse(voteResponse)
+	} else {
+		n.handleRejectedVoteResponse(voteResponse)
+	}
+}
+
+func (n *node) handleRejectedVoteResponse(voteResponse *voteResponse) {
+	term, ok := n.store.GetInt(CurrentTermKey)
+	if !ok {
+		panic("Not able to to obtain current term in handleRejectedVoteResponse")
+	}
+	if term < voteResponse.term {
+		n.dispatcher.Dispatch(event{StepDown, term})
+	}
+}
+
+func (n *node) handleSuccessfulVoteResponse(*voteResponse) {
 	n.st.votesGot = n.st.votesGot + 1
 	if n.gotMajority() {
 		n.st.mode = Leader
 		// what else needs to be done here?
-		n.dispatcher.Dispatch(event{StartLeader,nil})
+		n.dispatcher.Dispatch(event{StartLeader, nil})
 	}
 }

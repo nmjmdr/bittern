@@ -1,5 +1,5 @@
 package raft
 
 type Campaigner interface {
-  Campaign(node *node)
+	Campaign(node *node)
 }

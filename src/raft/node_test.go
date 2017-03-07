@@ -10,7 +10,7 @@ func createNode() *node {
 	n.dispatcher = newMockDispathcer(nil)
 	n.store = newInMemoryStore()
 	n.electionExpiryTimer = newMockElectionTimeoutTimer(nil, nil)
-	n.whoArePeers = newMockWhoArePeers(func()[]peer{
+	n.whoArePeers = newMockWhoArePeers(func() []peer {
 		return []peer{peer{"1"}}
 	})
 	delta := int64(20)
@@ -107,7 +107,6 @@ func Test_when_the_mode_is_follower_and_election_timer_timesout__and_has_not_hea
 	}
 }
 
-
 func Test_when_the_mode_is_candidate_and_election_timer_timesout__and_has_not_heard_from_leader_it_starts_a_candidate_again(t *testing.T) {
 	n := createNode()
 	n.boot()
@@ -144,18 +143,18 @@ func Test_when_the_mode_is_candidate_and_start_candidate_is_handled_it_increment
 		t.Fatal("Cannot obtain the current term")
 	}
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
-			n.handleEvent(event)
+		n.handleEvent(event)
 	}
-	n.dispatcher.Dispatch(event{StartCandidate,nil})
+	n.dispatcher.Dispatch(event{StartCandidate, nil})
 	if n.st.mode != Candidate {
 		t.Fatal("Should have been a Candidate")
 	}
 	var term uint64
-	term,ok = n.store.GetInt(CurrentTermKey)
+	term, ok = n.store.GetInt(CurrentTermKey)
 	if !ok {
 		t.Fatal("Cannot obtain the current term")
 	}
-	if term != previousTerm + 1 {
+	if term != previousTerm+1 {
 		t.Fatal("It should have incremented the term by 1")
 	}
 }
@@ -166,14 +165,14 @@ func Test_when_the_mode_is_candidate_and_start_candidate_is_handled_it_votes_for
 	n.st.mode = Candidate
 	holdVotesGot := n.st.votesGot
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
-			n.handleEvent(event)
+		n.handleEvent(event)
 	}
-	n.dispatcher.Dispatch(event{StartCandidate,nil})
+	n.dispatcher.Dispatch(event{StartCandidate, nil})
 	if n.st.mode != Candidate {
 		t.Fatal("Should have been a Candidate")
 	}
 	votesGot := n.st.votesGot
-	if votesGot != holdVotesGot + 1 {
+	if votesGot != holdVotesGot+1 {
 		t.Fatal("It should have incremented votesGot by 1")
 	}
 }
@@ -184,15 +183,15 @@ func Test_when_the_mode_is_candidate_and_start_candidate_is_handled_it_restarts_
 	n.st.mode = Candidate
 	startTimerCalled := false
 	stopTimerCalled := false
-	n.electionExpiryTimer = newMockElectionTimeoutTimer(func(t time.Duration){
+	n.electionExpiryTimer = newMockElectionTimeoutTimer(func(t time.Duration) {
 		startTimerCalled = true
-	},func(){
+	}, func() {
 		stopTimerCalled = true
 	})
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
-			n.handleEvent(event)
+		n.handleEvent(event)
 	}
-	n.dispatcher.Dispatch(event{StartCandidate,nil})
+	n.dispatcher.Dispatch(event{StartCandidate, nil})
 	if n.st.mode != Candidate {
 		t.Fatal("Should have been a Candidate")
 	}
@@ -204,19 +203,18 @@ func Test_when_the_mode_is_candidate_and_start_candidate_is_handled_it_restarts_
 	}
 }
 
-
 func Test_when_the_mode_is_candidate_and_start_candidate_is_handled_it_starts_the_campaign(t *testing.T) {
 	n := createNode()
 	n.boot()
 	n.st.mode = Candidate
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
-			n.handleEvent(event)
+		n.handleEvent(event)
 	}
 	campaignerCalled := false
-	n.campaigner = newMockCampaigner(func(node *node){
+	n.campaigner = newMockCampaigner(func(node *node) {
 		campaignerCalled = true
 	})
-	n.dispatcher.Dispatch(event{StartCandidate,nil})
+	n.dispatcher.Dispatch(event{StartCandidate, nil})
 	if n.st.mode != Candidate {
 		t.Fatal("Should have been a Candidate")
 	}
@@ -224,8 +222,6 @@ func Test_when_the_mode_is_candidate_and_start_candidate_is_handled_it_starts_th
 		t.Fatal("It should have called the campaigner")
 	}
 }
-
-// TO DO: complete this!!!!
 
 func Test_when_the_mode_is_candidate_and_it_gets_majority_votes_it_should_transition_to_a_leader(t *testing.T) {
 	n := createNode()
@@ -239,19 +235,41 @@ func Test_when_the_mode_is_candidate_and_it_gets_majority_votes_it_should_transi
 			n.handleEvent(event)
 		}
 	}
-	peers := []peer{peer{"1"},peer{"2"},peer{"3"}};
-	n.whoArePeers = newMockWhoArePeers(func()[]peer {
+	peers := []peer{peer{"1"}, peer{"2"}, peer{"3"}}
+	n.whoArePeers = newMockWhoArePeers(func() []peer {
 		return peers
 	})
 	// start Candidate so that it votes for itself
-	n.dispatcher.Dispatch(event{StartCandidate,nil})
+	n.dispatcher.Dispatch(event{StartCandidate, nil})
 	if n.st.votesGot != 1 {
 		t.Fatal("A node in candidate mode, should have voted for itself")
 	}
-	for i:=0;i<len(peers)-1;i++ {
-		n.dispatcher.Dispatch(event{GotVote,nil})
+	for i := 0; i < len(peers)-1; i++ {
+		n.dispatcher.Dispatch(event{GotVote, &voteResponse{true, 0, peer{}}})
 	}
 	if !startLeaderEventGenerated {
 		t.Fatal("Should have got elected as a leader")
+	}
+}
+
+func Test_when_the_mode_is_candidate_and_it_gets_a_rejected_vote_it_raises_stepdown_event(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.st.mode = Candidate
+	stepDownEventGenerated := false
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		if event.eventType == StepDown {
+			stepDownEventGenerated = true
+		} else {
+			n.handleEvent(event)
+		}
+	}
+	term, ok := n.store.GetInt(CurrentTermKey)
+	if !ok {
+		t.Fatal("Could not obtain current term")
+	}
+	n.dispatcher.Dispatch(event{GotVote, &voteResponse{false, (term + 1), peer{}}})
+	if !stepDownEventGenerated {
+		t.Fatal("Should have generated a stepdown event")
 	}
 }

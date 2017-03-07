@@ -7,7 +7,7 @@ const (
 	ElectionTimerTimedout
 	StartCandidate
 	StartLeader
-	GotVote
+	GotVoteResponse
 	GotRejectedVote
 	StepDown
 )

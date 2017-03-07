@@ -44,7 +44,7 @@ func (n *node) handleEvent(event event) {
 		n.electionTimerTimeout(event)
 	case StartCandidate:
 		n.startCandidate(event)
-	case GotVote:
+	case GotVoteResponse:
 		n.gotVote(event)
 	default:
 		panic(fmt.Sprintf("Unknown event: %d passed to handleEvent", event.eventType))

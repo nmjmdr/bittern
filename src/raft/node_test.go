@@ -245,7 +245,7 @@ func Test_when_the_mode_is_candidate_and_it_gets_majority_votes_it_should_transi
 		t.Fatal("A node in candidate mode, should have voted for itself")
 	}
 	for i := 0; i < len(peers)-1; i++ {
-		n.dispatcher.Dispatch(event{GotVote, &voteResponse{true, 0, peer{}}})
+		n.dispatcher.Dispatch(event{GotVoteResponse, &voteResponse{true, 0, peer{}}})
 	}
 	if !startLeaderEventGenerated {
 		t.Fatal("Should have got elected as a leader")
@@ -268,7 +268,7 @@ func Test_when_the_mode_is_candidate_and_it_gets_a_rejected_vote_it_raises_stepd
 	if !ok {
 		t.Fatal("Could not obtain current term")
 	}
-	n.dispatcher.Dispatch(event{GotVote, &voteResponse{false, (term + 1), peer{}}})
+	n.dispatcher.Dispatch(event{GotVoteResponse, &voteResponse{false, (term + 1), peer{}}})
 	if !stepDownEventGenerated {
 		t.Fatal("Should have generated a stepdown event")
 	}

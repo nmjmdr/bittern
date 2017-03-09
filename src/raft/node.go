@@ -46,6 +46,8 @@ func (n *node) handleEvent(event event) {
 		n.startCandidate(event)
 	case GotVoteResponse:
 		n.gotVote(event)
+	case StepDown:
+		n.stepDown(event)
 	default:
 		panic(fmt.Sprintf("Unknown event: %d passed to handleEvent", event.eventType))
 	}
@@ -129,6 +131,13 @@ func (n *node) handleRejectedVoteResponse(voteResponse *voteResponse) {
 	if term < voteResponse.term {
 		n.dispatcher.Dispatch(event{StepDown, term})
 	}
+}
+
+func (n *node) stepDown(evt event) {
+	newTerm := evt.payload.(uint64)
+	n.store.StoreInt(CurrentTermKey, newTerm)
+	n.st.mode = Follower
+	n.dispatcher.Dispatch(event{StartFollower, nil})
 }
 
 func (n *node) handleSuccessfulVoteResponse(*voteResponse) {

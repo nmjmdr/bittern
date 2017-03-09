@@ -107,7 +107,7 @@ func Test_when_the_mode_is_follower_and_election_timer_timesout__and_has_not_hea
 	}
 }
 
-func Test_when_the_mode_is_candidate_and_election_timer_timesout__and_has_not_heard_from_leader_it_starts_a_candidate_again(t *testing.T) {
+func Test_when_the_mode_is_candidate_and_election_timer_times_out__and_the_node_has_not_heard_from_leader_it_starts_as_a_candidate_again(t *testing.T) {
 	n := createNode()
 	n.boot()
 	n.st.mode = Candidate
@@ -271,5 +271,92 @@ func Test_when_the_mode_is_candidate_and_it_gets_a_rejected_vote_it_raises_stepd
 	n.dispatcher.Dispatch(event{GotVoteResponse, &voteResponse{false, (term + 1), peer{}}})
 	if !stepDownEventGenerated {
 		t.Fatal("Should have generated a stepdown event")
+	}
+}
+
+func Test_when_the_mode_is_candidate_and_it_gets_step_down_event_it_generates_start_follower_event(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.st.mode = Candidate
+	verifyStartFollowerEventIsGenratedAfterStepDownEvent(t, n)
+}
+
+func Test_when_the_mode_is_leader_and_it_gets_step_down_event_it_generates_start_follower_event(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.st.mode = Leader
+	verifyStartFollowerEventIsGenratedAfterStepDownEvent(t, n)
+}
+
+func verifyStartFollowerEventIsGenratedAfterStepDownEvent(t *testing.T, n *node) {
+	startFollowerEventGenerated := false
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		if event.eventType == StartFollower {
+			startFollowerEventGenerated = true
+		} else {
+			n.handleEvent(event)
+		}
+	}
+	term, ok := n.store.GetInt(CurrentTermKey)
+	if !ok {
+		t.Fatal("Could not obtain current term")
+	}
+	n.dispatcher.Dispatch(event{StepDown, term})
+	if !startFollowerEventGenerated {
+		t.Fatal("Should have generated the start follower event")
+	}
+}
+
+func Test_when_the_mode_is_candidate_and_it_gets_step_down_event_it_sets_the_current_term_to_new_term(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.st.mode = Candidate
+	verifyCurrentTermIsSetToNewTermAfterStepDownEvent(t, n)
+}
+
+func Test_when_the_mode_is_leader_and_it_gets_step_down_event_it_sets_the_current_term_to_new_term(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.st.mode = Leader
+	verifyCurrentTermIsSetToNewTermAfterStepDownEvent(t, n)
+}
+
+func verifyCurrentTermIsSetToNewTermAfterStepDownEvent(t *testing.T, n *node) {
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	expectedTerm := uint64(2)
+	n.dispatcher.Dispatch(event{StepDown, expectedTerm})
+	term, ok := n.store.GetInt(CurrentTermKey)
+	if !ok {
+		t.Fatal("Could not obtain current term")
+	}
+	if term != expectedTerm {
+		t.Fatal("Should have set the current term to new term")
+	}
+}
+
+func Test_when_the_mode_is_candidate_and_it_gets_step_down_event_it_sets_the_mode_to_follower(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.st.mode = Candidate
+	verifyModeIsSetToFollowerAfterStepDownEvent(t, n)
+}
+
+func Test_when_the_mode_is_leader_and_it_gets_step_down_event_it_sets_the_mode_to_follower(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.st.mode = Leader
+	verifyModeIsSetToFollowerAfterStepDownEvent(t, n)
+}
+
+func verifyModeIsSetToFollowerAfterStepDownEvent(t *testing.T, n *node) {
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	expectedTerm := uint64(2)
+	n.dispatcher.Dispatch(event{StepDown, expectedTerm})
+	if n.st.mode != Follower {
+		t.Fatal("Should have set the mode to follower")
 	}
 }

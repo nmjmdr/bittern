@@ -11,6 +11,7 @@ const CurrentTermKey = "current-term"
 type node struct {
 	st              *state
 	electionTimeout int64
+	id              string
 
 	dispatcher          Dispatcher
 	store               Store
@@ -18,11 +19,13 @@ type node struct {
 	time                Time
 	campaigner          Campaigner
 	whoArePeers         WhoArePeers
+	transport           Transport
 }
 
-func newNode() *node {
+func newNode(id string) *node {
 	rand.Seed(time.Now().Unix())
 	n := new(node)
+	n.id = id
 	return n
 }
 
@@ -48,6 +51,8 @@ func (n *node) handleEvent(event event) {
 		n.gotVote(event)
 	case StepDown:
 		n.stepDown(event)
+	case GotRequestForVote:
+		n.gotRequestForVote(event)
 	default:
 		panic(fmt.Sprintf("Unknown event: %d passed to handleEvent", event.eventType))
 	}
@@ -144,7 +149,18 @@ func (n *node) handleSuccessfulVoteResponse(*voteResponse) {
 	n.st.votesGot = n.st.votesGot + 1
 	if n.gotMajority() {
 		n.st.mode = Leader
-		// what else needs to be done here?
 		n.dispatcher.Dispatch(event{StartLeader, nil})
 	}
+}
+
+func (n *node) gotRequestForVote(evt event) {
+	voteRequest := evt.payload.(*voteRequest)
+	term, ok := n.store.GetInt(CurrentTermKey)
+	if !ok {
+		panic("Not able to to obtain current term in gotRequestForVote")
+	}
+	if voteRequest.term < term {
+		n.transport.SendVoteResponse(voteRequest.from, voteResponse{false, term, peer{n.id}})
+	}
+
 }

@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-func createNode() *node {
-	n := newNode()
+func createNamedNode(id string) *node {
+	n := newNode(id)
 	n.dispatcher = newMockDispathcer(nil)
 	n.store = newInMemoryStore()
 	n.electionExpiryTimer = newMockElectionTimeoutTimer(nil, nil)
@@ -18,7 +18,12 @@ func createNode() *node {
 		return n.electionTimeout - delta
 	})
 	n.campaigner = newMockCampaigner(nil)
+	n.transport = newMockTransport(nil)
 	return n
+}
+
+func createNode() *node {
+	return createNamedNode("peer0")
 }
 
 func Test_when_the_node_boots_it_should_start_as_a_follower(t *testing.T) {
@@ -358,5 +363,85 @@ func verifyModeIsSetToFollowerAfterStepDownEvent(t *testing.T, n *node) {
 	n.dispatcher.Dispatch(event{StepDown, expectedTerm})
 	if n.st.mode != Follower {
 		t.Fatal("Should have set the mode to follower")
+	}
+}
+
+func Test_when_as_a_follower_node_gets_request_for_vote_it_rejects_it_if_the_request_term_is_less_than_its_own_term(t *testing.T) {
+	id := "peer0"
+	n := createNamedNode(id)
+	n.boot()
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	var gotVoteResponse voteResponse
+	peerRequestingVote := "peer1"
+	var voteResponseSentTo peer
+	n.transport.(*mockTransport).sendVoteResponseCb = func(sendToPeer peer, voteResponse voteResponse) {
+		gotVoteResponse = voteResponse
+		voteResponseSentTo = sendToPeer
+	}
+	term := uint64(2)
+	n.store.StoreInt(CurrentTermKey, term)
+	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{peer{peerRequestingVote}, term - 1}})
+
+	if voteResponseSentTo.id != peerRequestingVote {
+		t.Fatal("Should have sent the rejection to %s, but got it for: %s", peerRequestingVote, voteResponseSentTo.id)
+	}
+	if gotVoteResponse.success {
+		t.Fatal("Should have rejected the vote request")
+	}
+	if gotVoteResponse.from.id != id {
+		t.Fatal("Should have got the response from: %s, but got it from: %s", id, gotVoteResponse.from.id)
+	}
+}
+
+func Test_when_new_term_is_passed_to_voted_for_it_returns_empty_as_candidate_id(t *testing.T) {
+	votedFor := newVotedForStore(newInMemoryStore())
+	term := uint64(1)
+	candidateId := votedFor.Get(term)
+	if candidateId != "" {
+		t.Fatal("Should have returned an empty candidate id")
+	}
+}
+
+func Test_when_an_existing_term_is_passed_to_voted_for_it_returns_the_candidate_id_that_was_saved_earlier(t *testing.T) {
+	votedFor := newVotedForStore(newInMemoryStore())
+	term := uint64(1)
+	candidateId := "peer1"
+	votedFor.Store(term, candidateId)
+	storedCandidateId := votedFor.Get(term)
+	if storedCandidateId != candidateId {
+		t.Fatal("Should have returned the candidate id that was saved earlier")
+	}
+}
+
+func Test_when_a_new_term_is_passed_to_voted_for_and_there_exists_a_value_for_different_term_it_returns_an_empty_candidate_id(t *testing.T) {
+	votedFor := newVotedForStore(newInMemoryStore())
+	term := uint64(1)
+	candidateId := "peer1"
+	votedFor.Store(term, candidateId)
+	newTerm := uint64(2)
+	storedCandidateId := votedFor.Get(newTerm)
+	if storedCandidateId != "" {
+		t.Fatal("Should have returned an empty candidateId")
+	}
+}
+
+func Test_when_there_exists_a_previous_value_in_voted_and_a_new_voted_for_values_are_stored_it_then_returns_the_new_values(t *testing.T) {
+	votedFor := newVotedForStore(newInMemoryStore())
+	term := uint64(1)
+	candidateId := "peer1"
+	votedFor.Store(term, candidateId)
+	storedCandidateId := votedFor.Get(term)
+	if storedCandidateId != candidateId {
+		t.Fatal("Should have returned the previously stored candidateId")
+	}
+
+	newTerm := uint64(2)
+	newCandidateId := "peer2"
+	votedFor.Store(newTerm, newCandidateId)
+	storedCandidateId = votedFor.Get(newTerm)
+	if storedCandidateId != newCandidateId {
+		t.Fatal("Should have returned an newly stored candidateId")
 	}
 }

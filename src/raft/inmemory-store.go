@@ -21,7 +21,7 @@ func (i *inMemoryStore) GetInt(key string) (uint64, bool) {
 func (i *inMemoryStore) StoreInt(key string, value uint64) {
 	i.m[key] = value
 }
-func (i *inMemoryStore) getValue(key string) (string, bool) {
+func (i *inMemoryStore) GetValue(key string) (string, bool) {
 	value, ok := i.m[key]
 	if !ok {
 		return "", false

@@ -8,8 +8,8 @@ const (
 	StartCandidate
 	StartLeader
 	GotVoteResponse
-	GotRejectedVote
 	StepDown
+	GotRequestForVote
 )
 
 type event struct {

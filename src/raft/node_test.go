@@ -475,3 +475,59 @@ func Test_when_a_follower_has_already_voted_for_another_peer_in_a_given_term_the
 		t.Fatal(fmt.Sprintf("Should NOT have got a successful vote for %s", anotherPeerRequestingVote))
 	}
 }
+
+func Test_when_a_follower_has_already_voted_for_a_peer_in_a_given_term_and_the_same_peer_requests_for_vote_again_then_it_returns_a_success_response(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	var voteResponseSentTo peer
+	var gotVoteResponse voteResponse
+	n.transport.(*mockTransport).sendVoteResponseCb = func(sendToPeer peer, voteResponse voteResponse) {
+		gotVoteResponse = voteResponse
+		voteResponseSentTo = sendToPeer
+	}
+	term, ok := n.store.GetInt(CurrentTermKey)
+	if !ok {
+		t.Fatal("Should be able to get current term")
+	}
+	peerVotedForEarlier := "peer1"
+	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{peer{peerVotedForEarlier}, term}})
+	if (voteResponseSentTo.id != peerVotedForEarlier) || (!gotVoteResponse.success) {
+		t.Fatal(fmt.Sprintf("Should have got a successful vote for %s", peerVotedForEarlier))
+	}
+	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{peer{peerVotedForEarlier}, term}})
+	if !gotVoteResponse.success {
+		t.Fatal(fmt.Sprintf("Should have got a successful vote for %s", peerVotedForEarlier))
+	}
+}
+
+func Test_when_a_follower_has_already_voted_for_another_peer_in_a_previous_term_and_another_peer_requests_for_vote_in_another_term_it_gets_a_success_vote(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	var voteResponseSentTo peer
+	var gotVoteResponse voteResponse
+	n.transport.(*mockTransport).sendVoteResponseCb = func(sendToPeer peer, voteResponse voteResponse) {
+		gotVoteResponse = voteResponse
+		voteResponseSentTo = sendToPeer
+	}
+	term, ok := n.store.GetInt(CurrentTermKey)
+	if !ok {
+		t.Fatal("Should be able to get current term")
+	}
+	peerVotedForEarlier := "peer1"
+	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{peer{peerVotedForEarlier}, term}})
+	if (voteResponseSentTo.id != peerVotedForEarlier) || (!gotVoteResponse.success) {
+		t.Fatal(fmt.Sprintf("Should have got a successful vote for %s", peerVotedForEarlier))
+	}
+	anotherPeerRequestingVote := "peer2"
+	anotherTerm := term + 1
+	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{peer{anotherPeerRequestingVote}, anotherTerm}})
+	if !gotVoteResponse.success {
+		t.Fatal(fmt.Sprintf("Should have got a successful vote for %s", anotherPeerRequestingVote))
+	}
+}

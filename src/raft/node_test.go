@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -9,6 +10,7 @@ func createNamedNode(id string) *node {
 	n := newNode(id)
 	n.dispatcher = newMockDispathcer(nil)
 	n.store = newInMemoryStore()
+	n.votedFor = newVotedForStore(n.store)
 	n.electionExpiryTimer = newMockElectionTimeoutTimer(nil, nil)
 	n.whoArePeers = newMockWhoArePeers(func() []peer {
 		return []peer{peer{"1"}}
@@ -385,13 +387,13 @@ func Test_when_as_a_follower_node_gets_request_for_vote_it_rejects_it_if_the_req
 	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{peer{peerRequestingVote}, term - 1}})
 
 	if voteResponseSentTo.id != peerRequestingVote {
-		t.Fatal("Should have sent the rejection to %s, but got it for: %s", peerRequestingVote, voteResponseSentTo.id)
+		t.Fatal(fmt.Sprintf("Should have sent the rejection to %s, but got it for: %s", peerRequestingVote, voteResponseSentTo.id))
 	}
 	if gotVoteResponse.success {
 		t.Fatal("Should have rejected the vote request")
 	}
 	if gotVoteResponse.from.id != id {
-		t.Fatal("Should have got the response from: %s, but got it from: %s", id, gotVoteResponse.from.id)
+		t.Fatal(fmt.Sprintf("Should have got the response from: %s, but got it from: %s", id, gotVoteResponse.from.id))
 	}
 }
 
@@ -443,5 +445,33 @@ func Test_when_there_exists_a_previous_value_in_voted_and_a_new_voted_for_values
 	storedCandidateId = votedFor.Get(newTerm)
 	if storedCandidateId != newCandidateId {
 		t.Fatal("Should have returned an newly stored candidateId")
+	}
+}
+
+func Test_when_a_follower_has_already_voted_for_another_peer_in_a_given_term_then_it_rejects_the_request_for_vote(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	var voteResponseSentTo peer
+	var gotVoteResponse voteResponse
+	n.transport.(*mockTransport).sendVoteResponseCb = func(sendToPeer peer, voteResponse voteResponse) {
+		gotVoteResponse = voteResponse
+		voteResponseSentTo = sendToPeer
+	}
+	term, ok := n.store.GetInt(CurrentTermKey)
+	if !ok {
+		t.Fatal("Should be able to get current term")
+	}
+	peerVotedForEarlier := "peer1"
+	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{peer{peerVotedForEarlier}, term}})
+	if (voteResponseSentTo.id != peerVotedForEarlier) || (!gotVoteResponse.success) {
+		t.Fatal(fmt.Sprintf("Should have got a successful vote for %s", peerVotedForEarlier))
+	}
+	anotherPeerRequestingVote := "peer2"
+	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{peer{anotherPeerRequestingVote}, term}})
+	if gotVoteResponse.success {
+		t.Fatal(fmt.Sprintf("Should NOT have got a successful vote for %s", anotherPeerRequestingVote))
 	}
 }

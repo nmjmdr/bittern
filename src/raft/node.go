@@ -27,7 +27,6 @@ func newNode(id string) *node {
 	rand.Seed(time.Now().Unix())
 	n := new(node)
 	n.id = id
-	n.votedFor = newVotedForStore(n.store)
 	return n
 }
 
@@ -179,10 +178,11 @@ func (n *node) gotRequestForVote(evt event) {
 		n.transport.SendVoteResponse(voteRequest.from, voteResponse{false, term, peer{n.id}})
 		return
 	}
-
 	if n.haveIAlreadyVotedForAnotherPeerForTheTerm(voteRequest.term, voteRequest.from.id) {
 		n.transport.SendVoteResponse(voteRequest.from, voteResponse{false, term, peer{n.id}})
 		return
 	}
-	// else have to check log here
+	fmt.Println("TO DO: CHECK LOG HERE!!!!!")
+	n.votedFor.Store(voteRequest.term, voteRequest.from.id)
+	n.transport.SendVoteResponse(voteRequest.from, voteResponse{true, term, peer{n.id}})
 }

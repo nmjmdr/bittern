@@ -21,6 +21,7 @@ type node struct {
 	whoArePeers         WhoArePeers
 	transport           Transport
 	votedFor            VotedFor
+	log                 Log
 }
 
 func newNode(id string) *node {
@@ -168,6 +169,17 @@ func (n *node) haveIAlreadyVotedForAnotherPeerForTheTerm(term uint64, peerAsking
 	return true
 }
 
+func (n *node) isCandidatesLogUptoDate(voteRequest *voteRequest) bool {
+	// NOTE: Ref Notes>1
+	if voteRequest.lastLogTerm > n.log.LastTerm() {
+		return true
+	} else if (voteRequest.lastLogTerm == n.log.LastTerm()) && (voteRequest.lastLogIndex >= n.log.LastIndex()) {
+		return true
+	}
+
+	return false
+}
+
 func (n *node) gotRequestForVote(evt event) {
 	voteRequest := evt.payload.(*voteRequest)
 	term, ok := n.store.GetInt(CurrentTermKey)
@@ -182,7 +194,10 @@ func (n *node) gotRequestForVote(evt event) {
 		n.transport.SendVoteResponse(voteRequest.from, voteResponse{false, term, peer{n.id}})
 		return
 	}
-	fmt.Println("TO DO: CHECK LOG HERE!!!!!")
+	if !n.isCandidatesLogUptoDate(voteRequest) {
+		n.transport.SendVoteResponse(voteRequest.from, voteResponse{false, term, peer{n.id}})
+		return
+	}
 	n.votedFor.Store(voteRequest.term, voteRequest.from.id)
 	n.transport.SendVoteResponse(voteRequest.from, voteResponse{true, term, peer{n.id}})
 }

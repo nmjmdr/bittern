@@ -12,6 +12,7 @@ func createNamedNode(id string) *node {
 	n.store = newInMemoryStore()
 	n.votedFor = newVotedForStore(n.store)
 	n.electionExpiryTimer = newMockElectionTimeoutTimer(nil, nil)
+	n.log = newMockLog(uint(0),uint64(0))
 	n.whoArePeers = newMockWhoArePeers(func() []peer {
 		return []peer{peer{"1"}}
 	})
@@ -384,7 +385,7 @@ func Test_when_as_a_follower_node_gets_request_for_vote_it_rejects_it_if_the_req
 	}
 	term := uint64(2)
 	n.store.StoreInt(CurrentTermKey, term)
-	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{peer{peerRequestingVote}, term - 1}})
+	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{from:peer{peerRequestingVote}, term:term - 1}})
 
 	if voteResponseSentTo.id != peerRequestingVote {
 		t.Fatal(fmt.Sprintf("Should have sent the rejection to %s, but got it for: %s", peerRequestingVote, voteResponseSentTo.id))
@@ -448,7 +449,7 @@ func Test_when_there_exists_a_previous_value_in_voted_and_a_new_voted_for_values
 	}
 }
 
-func Test_when_a_follower_has_already_voted_for_another_peer_in_a_given_term_then_it_rejects_the_request_for_vote(t *testing.T) {
+func Test_when_a_node_has_already_voted_for_another_peer_in_a_given_term_then_it_rejects_the_request_for_vote(t *testing.T) {
 	n := createNode()
 	n.boot()
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
@@ -464,19 +465,20 @@ func Test_when_a_follower_has_already_voted_for_another_peer_in_a_given_term_the
 	if !ok {
 		t.Fatal("Should be able to get current term")
 	}
+	n.log.(*mockLog).lastLogTerm = term
 	peerVotedForEarlier := "peer1"
-	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{peer{peerVotedForEarlier}, term}})
+	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{from:peer{peerVotedForEarlier}, term:term}})
 	if (voteResponseSentTo.id != peerVotedForEarlier) || (!gotVoteResponse.success) {
 		t.Fatal(fmt.Sprintf("Should have got a successful vote for %s", peerVotedForEarlier))
 	}
 	anotherPeerRequestingVote := "peer2"
-	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{peer{anotherPeerRequestingVote}, term}})
+	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{from:peer{anotherPeerRequestingVote}, term:term}})
 	if gotVoteResponse.success {
 		t.Fatal(fmt.Sprintf("Should NOT have got a successful vote for %s", anotherPeerRequestingVote))
 	}
 }
 
-func Test_when_a_follower_has_already_voted_for_a_peer_in_a_given_term_and_the_same_peer_requests_for_vote_again_then_it_returns_a_success_response(t *testing.T) {
+func Test_when_a_node_has_already_voted_for_a_peer_in_a_given_term_and_the_same_peer_requests_for_vote_again_then_it_returns_a_success_response(t *testing.T) {
 	n := createNode()
 	n.boot()
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
@@ -492,18 +494,19 @@ func Test_when_a_follower_has_already_voted_for_a_peer_in_a_given_term_and_the_s
 	if !ok {
 		t.Fatal("Should be able to get current term")
 	}
+	n.log.(*mockLog).lastLogTerm = term
 	peerVotedForEarlier := "peer1"
-	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{peer{peerVotedForEarlier}, term}})
+	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{from:peer{peerVotedForEarlier}, term:term}})
 	if (voteResponseSentTo.id != peerVotedForEarlier) || (!gotVoteResponse.success) {
 		t.Fatal(fmt.Sprintf("Should have got a successful vote for %s", peerVotedForEarlier))
 	}
-	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{peer{peerVotedForEarlier}, term}})
+	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{from:peer{peerVotedForEarlier}, term:term}})
 	if !gotVoteResponse.success {
 		t.Fatal(fmt.Sprintf("Should have got a successful vote for %s", peerVotedForEarlier))
 	}
 }
 
-func Test_when_a_follower_has_already_voted_for_another_peer_in_a_previous_term_and_another_peer_requests_for_vote_in_another_term_it_gets_a_success_vote(t *testing.T) {
+func Test_when_a_node_has_already_voted_for_another_peer_in_a_previous_term_and_another_peer_requests_for_vote_in_another_term_it_gets_a_success_vote(t *testing.T) {
 	n := createNode()
 	n.boot()
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
@@ -519,15 +522,121 @@ func Test_when_a_follower_has_already_voted_for_another_peer_in_a_previous_term_
 	if !ok {
 		t.Fatal("Should be able to get current term")
 	}
+	n.log.(*mockLog).lastLogTerm = term
 	peerVotedForEarlier := "peer1"
-	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{peer{peerVotedForEarlier}, term}})
+	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{from:peer{peerVotedForEarlier}, term:term}})
 	if (voteResponseSentTo.id != peerVotedForEarlier) || (!gotVoteResponse.success) {
 		t.Fatal(fmt.Sprintf("Should have got a successful vote for %s", peerVotedForEarlier))
 	}
 	anotherPeerRequestingVote := "peer2"
 	anotherTerm := term + 1
-	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{peer{anotherPeerRequestingVote}, anotherTerm}})
+	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{from:peer{anotherPeerRequestingVote}, term:anotherTerm}})
 	if !gotVoteResponse.success {
 		t.Fatal(fmt.Sprintf("Should have got a successful vote for %s", anotherPeerRequestingVote))
+	}
+}
+
+func Test_when_the_nodes_last_log_term_is_greater_than_vote_requests_last_log_term_it_rejects_the_request_for_vote(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	var gotVoteResponse voteResponse
+	sendVoteResponseInvoked := false
+	n.transport.(*mockTransport).sendVoteResponseCb = func(sendToPeer peer, voteResponse voteResponse) {
+		gotVoteResponse = voteResponse
+		sendVoteResponseInvoked = true
+	}
+	term := uint64(1)
+	n.store.StoreInt(CurrentTermKey,term)
+	nodesLastLogTerm := uint64(2)
+	n.log.(*mockLog).lastLogTerm = nodesLastLogTerm
+	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{from:peer{"some-peer"}, term:term,lastLogTerm:(nodesLastLogTerm-1)}})
+	if !sendVoteResponseInvoked {
+		t.Fatal("Should have sent a vote response")
+	}
+	if gotVoteResponse.success {
+		t.Fatal("Should have rejected the vote request")
+	}
+}
+
+
+func Test_when_the_nodes_log_term_is_same_as_the_vote_requests_last_log_term_but_nodes_log_length_is_greater_it_rejects_the_request_for_vote(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	var gotVoteResponse voteResponse
+	sendVoteResponseInvoked := false
+	n.transport.(*mockTransport).sendVoteResponseCb = func(sendToPeer peer, voteResponse voteResponse) {
+		gotVoteResponse = voteResponse
+		sendVoteResponseInvoked = true
+	}
+	term := uint64(1)
+	n.store.StoreInt(CurrentTermKey,term)
+	nodesLastLogTerm := uint64(2)
+	n.log.(*mockLog).lastLogTerm = nodesLastLogTerm
+	index := uint(2)
+	n.log.(*mockLog).lastLogIndex = index
+	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{from:peer{"some-peer"}, term:term,lastLogTerm:(nodesLastLogTerm),lastLogIndex:(index-1)}})
+	if !sendVoteResponseInvoked {
+		t.Fatal("Should have sent a vote response")
+	}
+	if gotVoteResponse.success {
+		t.Fatal("Should have rejected the vote request")
+	}
+}
+
+func Test_when_the_nodes_last_log_term_is_smaller_than_vote_requests_last_log_term_it_accepts_the_request_for_vote(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	var gotVoteResponse voteResponse
+	sendVoteResponseInvoked := false
+	n.transport.(*mockTransport).sendVoteResponseCb = func(sendToPeer peer, voteResponse voteResponse) {
+		gotVoteResponse = voteResponse
+		sendVoteResponseInvoked = true
+	}
+	term := uint64(1)
+	n.store.StoreInt(CurrentTermKey,term)
+	nodesLastLogTerm := uint64(2)
+	n.log.(*mockLog).lastLogTerm = nodesLastLogTerm
+	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{from:peer{"some-peer"}, term:term,lastLogTerm:(nodesLastLogTerm+1)}})
+	if !sendVoteResponseInvoked {
+		t.Fatal("Should have sent a vote response")
+	}
+	if !gotVoteResponse.success {
+		t.Fatal("Should have accepted the vote request")
+	}
+}
+
+func Test_when_the_nodes_last_log_term_is_smaller_than_vote_requests_last_log_term_but_its_last_log_index_is_higher_it_still_accepts_the_request_for_vote(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	var gotVoteResponse voteResponse
+	sendVoteResponseInvoked := false
+	n.transport.(*mockTransport).sendVoteResponseCb = func(sendToPeer peer, voteResponse voteResponse) {
+		gotVoteResponse = voteResponse
+		sendVoteResponseInvoked = true
+	}
+	term := uint64(1)
+	n.store.StoreInt(CurrentTermKey,term)
+	nodesLastLogTerm := uint64(2)
+	n.log.(*mockLog).lastLogTerm = nodesLastLogTerm
+	index := uint(2)
+	n.log.(*mockLog).lastLogIndex = index
+	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{from:peer{"some-peer"}, term:term,lastLogTerm:(nodesLastLogTerm+1),lastLogIndex:(index-1)}})
+	if !sendVoteResponseInvoked {
+		t.Fatal("Should have sent a vote response")
+	}
+	if !gotVoteResponse.success {
+		t.Fatal("Should have accepted the vote request")
 	}
 }

@@ -1,0 +1,8 @@
+Notes:
+
+1>
+log is atleast as up-to-date as receiver’s log, grant vote
+Raft determines which of two logs is more up-to-date by comparing the index and term of
+the last entries in the logs. If the logs have last entries with different terms,
+then the log with the later term is more up-to-date. If the logs end with the same term,
+then whichever log is longer is more up-to-date.

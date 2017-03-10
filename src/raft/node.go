@@ -20,12 +20,14 @@ type node struct {
 	campaigner          Campaigner
 	whoArePeers         WhoArePeers
 	transport           Transport
+	votedFor            VotedFor
 }
 
 func newNode(id string) *node {
 	rand.Seed(time.Now().Unix())
 	n := new(node)
 	n.id = id
+	n.votedFor = newVotedForStore(n.store)
 	return n
 }
 
@@ -153,6 +155,20 @@ func (n *node) handleSuccessfulVoteResponse(*voteResponse) {
 	}
 }
 
+func (n *node) haveIAlreadyVotedForAnotherPeerForTheTerm(term uint64, peerAskingForVote string) bool {
+	// have we already voted for another peer in request's term?
+	// If votedFor is empty or candidateId, then grant vote
+	// where votedFor => candidateId that received vote in current term (or null if none)
+
+	// who did we vote for in the term?
+	candidateVotedFor := n.votedFor.Get(term)
+
+	if candidateVotedFor == "" || candidateVotedFor == peerAskingForVote {
+		return false
+	}
+	return true
+}
+
 func (n *node) gotRequestForVote(evt event) {
 	voteRequest := evt.payload.(*voteRequest)
 	term, ok := n.store.GetInt(CurrentTermKey)
@@ -161,6 +177,12 @@ func (n *node) gotRequestForVote(evt event) {
 	}
 	if voteRequest.term < term {
 		n.transport.SendVoteResponse(voteRequest.from, voteResponse{false, term, peer{n.id}})
+		return
 	}
 
+	if n.haveIAlreadyVotedForAnotherPeerForTheTerm(voteRequest.term, voteRequest.from.id) {
+		n.transport.SendVoteResponse(voteRequest.from, voteResponse{false, term, peer{n.id}})
+		return
+	}
+	// else have to check log here
 }

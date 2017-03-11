@@ -11,10 +11,8 @@ type mockElectionTimeoutTimer struct {
 	stopCb  StopCallbackFn
 }
 
-func newMockElectionTimeoutTimer(startCb StartCallbackFn, stopCb StopCallbackFn) *mockElectionTimeoutTimer {
+func newMockElectionTimeoutTimer() *mockElectionTimeoutTimer {
 	m := new(mockElectionTimeoutTimer)
-	m.startCb = startCb
-	m.stopCb = stopCb
 	return m
 }
 

@@ -5,9 +5,8 @@ type mockCampaigner struct {
 	callback CampaignCallbackFn
 }
 
-func newMockCampaigner(callback CampaignCallbackFn) *mockCampaigner {
+func newMockCampaigner() *mockCampaigner {
 	m := new(mockCampaigner)
-	m.callback = callback
 	return m
 }
 

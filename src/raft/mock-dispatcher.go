@@ -6,9 +6,8 @@ type mockDispatcher struct {
 	callback DispatchCallbackFn
 }
 
-func newMockDispathcer(callback DispatchCallbackFn) *mockDispatcher {
+func newMockDispathcer() *mockDispatcher {
 	m := new(mockDispatcher)
-	m.callback = callback
 	return m
 }
 

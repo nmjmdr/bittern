@@ -8,10 +8,10 @@ import (
 
 func createNamedNode(id string) *node {
 	n := newNode(id)
-	n.dispatcher = newMockDispathcer(nil)
+	n.dispatcher = newMockDispathcer()
 	n.store = newInMemoryStore()
 	n.votedFor = newVotedForStore(n.store)
-	n.electionExpiryTimer = newMockElectionTimeoutTimer(nil, nil)
+	n.electionExpiryTimer = newMockElectionTimeoutTimer()
 	n.log = newMockLog(uint(0),uint64(0))
 	n.whoArePeers = newMockWhoArePeers(func() []peer {
 		return []peer{peer{"1"}}
@@ -20,8 +20,8 @@ func createNamedNode(id string) *node {
 	n.time = newMockTime(func() int64 {
 		return n.electionTimeout - delta
 	})
-	n.campaigner = newMockCampaigner(nil)
-	n.transport = newMockTransport(nil)
+	n.campaigner = newMockCampaigner()
+	n.transport = newMockTransport()
 	return n
 }
 
@@ -191,11 +191,12 @@ func Test_when_the_mode_is_candidate_and_start_candidate_is_handled_it_restarts_
 	n.st.mode = Candidate
 	startTimerCalled := false
 	stopTimerCalled := false
-	n.electionExpiryTimer = newMockElectionTimeoutTimer(func(t time.Duration) {
+	n.electionExpiryTimer.(*mockElectionTimeoutTimer).startCb = func(t time.Duration) {
 		startTimerCalled = true
-	}, func() {
+	}
+	n.electionExpiryTimer.(*mockElectionTimeoutTimer).stopCb = func() {
 		stopTimerCalled = true
-	})
+	}
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 		n.handleEvent(event)
 	}
@@ -219,9 +220,9 @@ func Test_when_the_mode_is_candidate_and_start_candidate_is_handled_it_starts_th
 		n.handleEvent(event)
 	}
 	campaignerCalled := false
-	n.campaigner = newMockCampaigner(func(node *node) {
+	n.campaigner.(*mockCampaigner).callback = func(node *node) {
 		campaignerCalled = true
-	})
+	}
 	n.dispatcher.Dispatch(event{StartCandidate, nil})
 	if n.st.mode != Candidate {
 		t.Fatal("Should have been a Candidate")
@@ -638,5 +639,31 @@ func Test_when_the_nodes_last_log_term_is_smaller_than_vote_requests_last_log_te
 	}
 	if !gotVoteResponse.success {
 		t.Fatal("Should have accepted the vote request")
+	}
+}
+
+func Test_when_the_node_receives_an_append_entry_with_a_term_less_than_its_own_it_rejects_it(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	sendAppendEntryResponseCalled := false
+	var gotAppendEntryResponse appendEntryResponse
+	n.transport.(*mockTransport).sendAppendEntryResponseCb = func(sendToPeer peer,ar appendEntryResponse) {
+		sendAppendEntryResponseCalled = true
+		gotAppendEntryResponse = ar
+	}
+	term := uint64(2)
+	n.store.StoreInt(CurrentTermKey,term)
+	n.dispatcher.Dispatch(event{AppendEntry,&appendEntryRequest{peer{"peer1"},(term-1)}})
+	if !sendAppendEntryResponseCalled {
+		t.Fatal("Should have called send append entry response")
+	}
+	if gotAppendEntryResponse.success {
+		t.Fatal("Should have rejected the append entry response")
+	}
+	if gotAppendEntryResponse.term != term {
+		t.Fatal("Should have set the response term to rejecting node's term")
 	}
 }

@@ -55,6 +55,8 @@ func (n *node) handleEvent(event event) {
 		n.stepDown(event)
 	case GotRequestForVote:
 		n.gotRequestForVote(event)
+	case AppendEntry:
+		n.appendEntry(event)
 	default:
 		panic(fmt.Sprintf("Unknown event: %d passed to handleEvent", event.eventType))
 	}
@@ -170,7 +172,7 @@ func (n *node) haveIAlreadyVotedForAnotherPeerForTheTerm(term uint64, peerAsking
 }
 
 func (n *node) isCandidatesLogUptoDate(voteRequest *voteRequest) bool {
-	// NOTE: Ref Notes>1
+	// NOTE: Ref Notes 1.
 	if voteRequest.lastLogTerm > n.log.LastTerm() {
 		return true
 	} else if (voteRequest.lastLogTerm == n.log.LastTerm()) && (voteRequest.lastLogIndex >= n.log.LastIndex()) {
@@ -200,4 +202,16 @@ func (n *node) gotRequestForVote(evt event) {
 	}
 	n.votedFor.Store(voteRequest.term, voteRequest.from.id)
 	n.transport.SendVoteResponse(voteRequest.from, voteResponse{true, term, peer{n.id}})
+}
+
+func (n *node) appendEntry(evt event) {
+	appendEntryRequest := evt.payload.(*appendEntryRequest)
+	term, ok := n.store.GetInt(CurrentTermKey)
+	if !ok {
+		panic("Not able to to obtain current term in gotRequestForVote")
+	}
+	if appendEntryRequest.term < term {
+		n.transport.SendAppendEntryResponse(appendEntryRequest.from,appendEntryResponse{false,term})
+		return
+	}
 }

@@ -211,7 +211,12 @@ func (n *node) appendEntry(evt event) {
 		panic("Not able to to obtain current term in gotRequestForVote")
 	}
 	if appendEntryRequest.term < term {
-		n.transport.SendAppendEntryResponse(appendEntryRequest.from,appendEntryResponse{false,term})
+		n.transport.SendAppendEntryResponse(appendEntryRequest.from, appendEntryResponse{false, term})
+		return
+	}
+	entry, ok := n.log.EntryAt(appendEntryRequest.prevLogIndex)
+	if !ok || entry.term != appendEntryRequest.prevLogTerm {
+		n.transport.SendAppendEntryResponse(appendEntryRequest.from, appendEntryResponse{false, term})
 		return
 	}
 }

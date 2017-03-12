@@ -1,10 +1,10 @@
 package raft
 
 type SendVoteResponseCallbackFn func(sendToPeer peer, voteResponse voteResponse)
-type SendAppendEntryResponseCallbackFn func(sendToPeer peer,ar appendEntryResponse)
+type SendAppendEntryResponseCallbackFn func(sendToPeer peer, ar appendEntryResponse)
 type mockTransport struct {
-	sendVoteResponseCb SendVoteResponseCallbackFn
-  sendAppendEntryResponseCb SendAppendEntryResponseCallbackFn
+	sendVoteResponseCb        SendVoteResponseCallbackFn
+	sendAppendEntryResponseCb SendAppendEntryResponseCallbackFn
 }
 
 func newMockTransport() *mockTransport {
@@ -18,8 +18,8 @@ func (t *mockTransport) SendVoteResponse(sendToPeer peer, vr voteResponse) {
 	}
 }
 
-func (t *mockTransport) SendAppendEntryResponse(sendToPeer peer,ar appendEntryResponse) {
-  if t.sendAppendEntryResponseCb != nil {
-    t.sendAppendEntryResponseCb(sendToPeer,ar)
-  }
+func (t *mockTransport) SendAppendEntryResponse(sendToPeer peer, ar appendEntryResponse) {
+	if t.sendAppendEntryResponseCb != nil {
+		t.sendAppendEntryResponseCb(sendToPeer, ar)
+	}
 }

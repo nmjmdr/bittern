@@ -204,19 +204,43 @@ func (n *node) gotRequestForVote(evt event) {
 	n.transport.SendVoteResponse(voteRequest.from, voteResponse{true, term, peer{n.id}})
 }
 
+func (n *node) appendToLog(request *appendEntryRequest) {
+	logIndex := request.prevLogIndex
+	for _, appendEntry := range request.entries {
+		logEntry, ok := n.log.EntryAt(logIndex)
+		if ok && logEntry.term != appendEntry.term {
+			n.log.DeleteFrom(logIndex)
+		}
+		n.log.AddAt(logIndex, appendEntry)
+		logIndex = logIndex + 1
+	}
+}
+
 func (n *node) appendEntry(evt event) {
-	appendEntryRequest := evt.payload.(*appendEntryRequest)
+	request := evt.payload.(*appendEntryRequest)
 	term, ok := n.store.GetInt(CurrentTermKey)
 	if !ok {
 		panic("Not able to to obtain current term in gotRequestForVote")
 	}
-	if appendEntryRequest.term < term {
-		n.transport.SendAppendEntryResponse(appendEntryRequest.from, appendEntryResponse{false, term})
+	if request.term < term {
+		n.transport.SendAppendEntryResponse(request.from, appendEntryResponse{false, term})
 		return
 	}
-	entry, ok := n.log.EntryAt(appendEntryRequest.prevLogIndex)
-	if !ok || entry.term != appendEntryRequest.prevLogTerm {
-		n.transport.SendAppendEntryResponse(appendEntryRequest.from, appendEntryResponse{false, term})
+	entry, ok := n.log.EntryAt(request.prevLogIndex)
+	if !ok || entry.term != request.prevLogTerm {
+		n.transport.SendAppendEntryResponse(request.from, appendEntryResponse{false, term})
 		return
 	}
+	// TO DO: write tests for appendToLog
+	n.appendToLog(request)
+	/*
+		// what about a leader?, the argument here could be that, if there is a leader
+		// who was isolated and rejoined the network, it would stepdown, when it sends its append entry and
+		// realizes that it is no longer the up to date laeader
+		// Not required to check for a leader here
+		if n.mode == Candidate {
+			n.dispatcher.Dispatch(event{StepDown, term})
+		}
+	*/
+
 }

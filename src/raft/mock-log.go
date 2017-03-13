@@ -1,10 +1,14 @@
 package raft
 
 type EntryAtCallbackFn func(index uint64) (entry, bool)
+type AddAtCallbackFn func(index uint64, entry entry)
+type DeleteFromCallbackFn func(index uint64)
 type mockLog struct {
 	lastLogIndex uint64
 	lastLogTerm  uint64
 	entryAtCb    EntryAtCallbackFn
+	addAtCb      AddAtCallbackFn
+	deleteFromCb DeleteFromCallbackFn
 }
 
 func newMockLog(lastLogIndex uint64, lastLogTerm uint64) *mockLog {
@@ -27,4 +31,17 @@ func (m *mockLog) EntryAt(index uint64) (entry, bool) {
 		return m.entryAtCb(index)
 	}
 	panic("Mock log - entryAtCb was not set, but EntryAt function was invoked, check the test setup")
+}
+
+func (m *mockLog) AddAt(index uint64, e entry) {
+	if m.addAtCb != nil {
+		m.addAtCb(index, e)
+	}
+	panic("Mock log - addAtCb was not set, but AddAt function was invoked, check the test setup")
+}
+func (m *mockLog) DeleteFrom(index uint64) {
+	if m.deleteFromCb != nil {
+		m.deleteFromCb(index)
+	}
+	panic("Mock log - deleteFromCb was not set, but DeleteFrom function was invoked, check the test setup")
 }

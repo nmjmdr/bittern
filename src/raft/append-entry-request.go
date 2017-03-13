@@ -5,4 +5,5 @@ type appendEntryRequest struct {
 	term         uint64
 	prevLogTerm  uint64
 	prevLogIndex uint64
+	entries      []entry
 }

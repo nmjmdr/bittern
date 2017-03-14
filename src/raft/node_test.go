@@ -742,4 +742,60 @@ func Test_when_there_is_a_mismatched_entry_in_log_append_entry_removes_it_and_th
 	}
 }
 
-// add test for: satisfies log matching property (appendEntry) when the log is empty
+func Test_when_the_nodes_log_is_empty_and_all_other_conditions_met_it_accepts_log_entries(t *testing.T) {
+	n := createNode()
+	n.boot()
+	addAtCalled := false
+	var entryAdded entry
+	n.log.(*mockLog).addAtCb = func(logIndex uint64,e entry) {
+		addAtCalled = true
+		entryAdded = e
+	}
+	n.log.(*mockLog).entryAtCb = func(logIndex uint64) (entry,bool) {
+		return entry{},false
+	}
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	term, ok := n.store.GetInt(CurrentTermKey)
+	if !ok {
+		t.Fatal("Not able to fetch current term key")
+	}
+	prevLogIndex := uint64(0)
+	command := "command"
+	n.dispatcher.Dispatch(event{AppendEntry, &appendEntryRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex,entries:[]entry{entry{term:term,command:command}}}})
+	if !addAtCalled {
+		t.Fatal("Should have called log.AddAt")
+	}
+	if entryAdded.command != command {
+		t.Fatal("Should have got the entry that was passed as part of append entry request")
+	}
+}
+
+func Test_when_the_nodes_is_a_candidate_and_it_accepts_log_entries_from_the_new_leader_it_steps_down(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.st.mode = Candidate
+	n.log.(*mockLog).addAtCb = func(logIndex uint64,e entry) {
+	}
+	n.log.(*mockLog).entryAtCb = func(logIndex uint64) (entry,bool) {
+		return entry{},false
+	}
+	stepDownCalled := false
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		if event.eventType == StepDown {
+			stepDownCalled = true
+		} else {
+			n.handleEvent(event)
+		}
+	}
+	term, ok := n.store.GetInt(CurrentTermKey)
+	if !ok {
+		t.Fatal("Not able to fetch current term key")
+	}
+	prevLogIndex := uint64(0)
+	n.dispatcher.Dispatch(event{AppendEntry, &appendEntryRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex,entries:[]entry{entry{term:term}}}})
+	if !stepDownCalled {
+		t.Fatal("Should have called step down")
+	}
+}

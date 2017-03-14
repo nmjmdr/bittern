@@ -226,8 +226,9 @@ func (n *node) appendEntry(evt event) {
 		n.transport.SendAppendEntryResponse(request.from, appendEntryResponse{false, term})
 		return
 	}
+
 	entry, ok := n.log.EntryAt(request.prevLogIndex)
-	if !ok || entry.term != request.prevLogTerm {
+	if ok && entry.term != request.prevLogTerm {
 		n.transport.SendAppendEntryResponse(request.from, appendEntryResponse{false, term})
 		return
 	}
@@ -238,9 +239,9 @@ func (n *node) appendEntry(evt event) {
 		// who was isolated and rejoined the network, it would stepdown, when it sends its append entry and
 		// realizes that it is no longer the up to date laeader
 		// Not required to check for a leader here
-		if n.mode == Candidate {
-			n.dispatcher.Dispatch(event{StepDown, term})
-		}
 	*/
+	if n.st.mode == Candidate {
+		n.dispatcher.Dispatch(event{StepDown, term})
+	}
 
 }

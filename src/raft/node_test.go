@@ -721,8 +721,8 @@ func Test_when_there_is_a_mismatched_entry_in_log_append_entry_removes_it_and_th
 	n := createNode()
 	n.boot()
 	entryTerm := uint64(2)
-	n.log.(*mockLog).entryAtCb = func(logIndex uint64) (entry,bool) {
-		return entry{term:entryTerm},true
+	n.log.(*mockLog).entryAtCb = func(logIndex uint64) (entry, bool) {
+		return entry{term: entryTerm}, true
 	}
 	deleteFromInvoked := false
 	deleteFromIndex := uint64(0)
@@ -730,10 +730,10 @@ func Test_when_there_is_a_mismatched_entry_in_log_append_entry_removes_it_and_th
 		deleteFromIndex = index
 		deleteFromInvoked = true
 	}
-	n.log.(*mockLog).addAtCb = func(logIndex uint64,e entry) {
+	n.log.(*mockLog).addAtCb = func(logIndex uint64, e entry) {
 	}
 	index := uint64(10)
-	n.appendToLog(&appendEntryRequest{prevLogIndex:index, entries:[]entry{entry{term:(entryTerm+1)}}})
+	n.appendToLog(&appendEntryRequest{prevLogIndex: index, entries: []entry{entry{term: (entryTerm + 1)}}})
 	if !deleteFromInvoked {
 		t.Fatal("Delete from index was NOT invoked")
 	}
@@ -747,12 +747,12 @@ func Test_when_the_nodes_log_is_empty_and_all_other_conditions_met_it_accepts_lo
 	n.boot()
 	addAtCalled := false
 	var entryAdded entry
-	n.log.(*mockLog).addAtCb = func(logIndex uint64,e entry) {
+	n.log.(*mockLog).addAtCb = func(logIndex uint64, e entry) {
 		addAtCalled = true
 		entryAdded = e
 	}
-	n.log.(*mockLog).entryAtCb = func(logIndex uint64) (entry,bool) {
-		return entry{},false
+	n.log.(*mockLog).entryAtCb = func(logIndex uint64) (entry, bool) {
+		return entry{}, false
 	}
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 		n.handleEvent(event)
@@ -763,7 +763,7 @@ func Test_when_the_nodes_log_is_empty_and_all_other_conditions_met_it_accepts_lo
 	}
 	prevLogIndex := uint64(0)
 	command := "command"
-	n.dispatcher.Dispatch(event{AppendEntry, &appendEntryRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex,entries:[]entry{entry{term:term,command:command}}}})
+	n.dispatcher.Dispatch(event{AppendEntry, &appendEntryRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex, entries: []entry{entry{term: term, command: command}}}})
 	if !addAtCalled {
 		t.Fatal("Should have called log.AddAt")
 	}
@@ -776,10 +776,10 @@ func Test_when_the_nodes_is_a_candidate_and_it_accepts_log_entries_from_the_new_
 	n := createNode()
 	n.boot()
 	n.st.mode = Candidate
-	n.log.(*mockLog).addAtCb = func(logIndex uint64,e entry) {
+	n.log.(*mockLog).addAtCb = func(logIndex uint64, e entry) {
 	}
-	n.log.(*mockLog).entryAtCb = func(logIndex uint64) (entry,bool) {
-		return entry{},false
+	n.log.(*mockLog).entryAtCb = func(logIndex uint64) (entry, bool) {
+		return entry{}, false
 	}
 	stepDownCalled := false
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
@@ -794,8 +794,38 @@ func Test_when_the_nodes_is_a_candidate_and_it_accepts_log_entries_from_the_new_
 		t.Fatal("Not able to fetch current term key")
 	}
 	prevLogIndex := uint64(0)
-	n.dispatcher.Dispatch(event{AppendEntry, &appendEntryRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex,entries:[]entry{entry{term:term}}}})
+	n.dispatcher.Dispatch(event{AppendEntry, &appendEntryRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex, entries: []entry{entry{term: term}}}})
 	if !stepDownCalled {
 		t.Fatal("Should have called step down")
+	}
+}
+
+func Test_when_node_receieves_and_accepts_log_entries_from_the_new_leader_and_sets_the_commit_index_to_lower_of_leaders_commit_index_and_nodes_last_log_index(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.log.(*mockLog).addAtCb = func(logIndex uint64, e entry) {
+	}
+	n.log.(*mockLog).entryAtCb = func(logIndex uint64) (entry, bool) {
+		return entry{}, false
+	}
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	term, ok := n.store.GetInt(CurrentTermKey)
+	if !ok {
+		t.Fatal("Not able to fetch current term key")
+	}
+	prevLogIndex := uint64(0)
+	leaderCommit := uint64(2)
+	n.log.(*mockLog).lastLogIndex = leaderCommit + 1
+	n.dispatcher.Dispatch(event{AppendEntry, &appendEntryRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex, entries: []entry{entry{term: term}}, leaderCommit: leaderCommit}})
+	if n.st.commitIndex != leaderCommit {
+		t.Fatal("Should have set the commit index to leader's commit")
+	}
+	n.log.(*mockLog).lastLogIndex = leaderCommit - 1
+	n.st.commitIndex = 0
+	n.dispatcher.Dispatch(event{AppendEntry, &appendEntryRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex, entries: []entry{entry{term: term}}, leaderCommit: leaderCommit}})
+	if n.st.commitIndex != n.log.(*mockLog).lastLogIndex {
+		t.Fatal("Should have set the commit index to last log index")
 	}
 }

@@ -161,7 +161,6 @@ func (n *node) haveIAlreadyVotedForAnotherPeerForTheTerm(term uint64, peerAsking
 	// have we already voted for another peer in request's term?
 	// If votedFor is empty or candidateId, then grant vote
 	// where votedFor => candidateId that received vote in current term (or null if none)
-
 	// who did we vote for in the term?
 	candidateVotedFor := n.votedFor.Get(term)
 
@@ -232,8 +231,10 @@ func (n *node) appendEntry(evt event) {
 		n.transport.SendAppendEntryResponse(request.from, appendEntryResponse{false, term})
 		return
 	}
-	// TO DO: write tests for appendToLog
 	n.appendToLog(request)
+	if request.leaderCommit > n.st.commitIndex {
+		n.st.commitIndex = min(request.leaderCommit, n.log.LastIndex())
+	}
 	/*
 		// what about a leader?, the argument here could be that, if there is a leader
 		// who was isolated and rejoined the network, it would stepdown, when it sends its append entry and

@@ -6,4 +6,5 @@ type appendEntryRequest struct {
 	prevLogTerm  uint64
 	prevLogIndex uint64
 	entries      []entry
+	leaderCommit uint64
 }

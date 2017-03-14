@@ -1,6 +1,6 @@
 package raft
 
-type appendEntryRequest struct {
+type appendEntriesRequest struct {
 	from         peer
 	term         uint64
 	prevLogTerm  uint64

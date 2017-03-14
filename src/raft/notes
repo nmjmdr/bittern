@@ -6,3 +6,9 @@ Raft determines which of two logs is more up-to-date by comparing the index and 
 the last entries in the logs. If the logs have last entries with different terms,
 then the log with the later term is more up-to-date. If the logs end with the same term,
 then whichever log is longer is more up-to-date.
+
+2>
+what about a leader stepping down in append entries call?, the argument here could be that, if there is a leader
+who was isolated and rejoined the network, it would step-down, when it sends its append entry and
+realizes that it is no longer the up to date leader
+Not required to check for a leader if it has step down in append entries

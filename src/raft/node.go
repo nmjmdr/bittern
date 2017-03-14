@@ -55,8 +55,10 @@ func (n *node) handleEvent(event event) {
 		n.stepDown(event)
 	case GotRequestForVote:
 		n.gotRequestForVote(event)
-	case AppendEntry:
-		n.appendEntry(event)
+	case AppendEntries:
+		n.appendEntries(event)
+	case StartLeader:
+		n.startLeader(event)
 	default:
 		panic(fmt.Sprintf("Unknown event: %d passed to handleEvent", event.eventType))
 	}
@@ -114,7 +116,7 @@ func (n *node) startCandidate(event event) {
 	n.campaigner.Campaign(n)
 }
 
-func (n *node) gotMajority() bool {
+func (n *node) didIGetMajority() bool {
 	peers := n.whoArePeers.All()
 	return n.st.votesGot >= (len(peers)/2 + 1)
 }
@@ -151,7 +153,7 @@ func (n *node) stepDown(evt event) {
 
 func (n *node) handleSuccessfulVoteResponse(*voteResponse) {
 	n.st.votesGot = n.st.votesGot + 1
-	if n.gotMajority() {
+	if n.didIGetMajority() {
 		n.st.mode = Leader
 		n.dispatcher.Dispatch(event{StartLeader, nil})
 	}
@@ -203,7 +205,7 @@ func (n *node) gotRequestForVote(evt event) {
 	n.transport.SendVoteResponse(voteRequest.from, voteResponse{true, term, peer{n.id}})
 }
 
-func (n *node) appendToLog(request *appendEntryRequest) {
+func (n *node) appendToLog(request *appendEntriesRequest) {
 	logIndex := request.prevLogIndex
 	for _, appendEntry := range request.entries {
 		logEntry, ok := n.log.EntryAt(logIndex)
@@ -215,34 +217,33 @@ func (n *node) appendToLog(request *appendEntryRequest) {
 	}
 }
 
-func (n *node) appendEntry(evt event) {
-	request := evt.payload.(*appendEntryRequest)
+func (n *node) appendEntries(evt event) {
+	request := evt.payload.(*appendEntriesRequest)
 	term, ok := n.store.GetInt(CurrentTermKey)
 	if !ok {
 		panic("Not able to to obtain current term in gotRequestForVote")
 	}
 	if request.term < term {
-		n.transport.SendAppendEntryResponse(request.from, appendEntryResponse{false, term})
+		n.transport.SendAppendEntryResponse(request.from, appendEntriesResponse{false, term})
 		return
 	}
-
+	// we heard from the leader here: all the other checks below are for log matching, think about this later!!!
+	n.st.lastHeardFromALeader = n.time.UnixNow()
 	entry, ok := n.log.EntryAt(request.prevLogIndex)
 	if ok && entry.term != request.prevLogTerm {
-		n.transport.SendAppendEntryResponse(request.from, appendEntryResponse{false, term})
+		n.transport.SendAppendEntryResponse(request.from, appendEntriesResponse{false, term})
 		return
 	}
 	n.appendToLog(request)
 	if request.leaderCommit > n.st.commitIndex {
 		n.st.commitIndex = min(request.leaderCommit, n.log.LastIndex())
 	}
-	/*
-		// what about a leader?, the argument here could be that, if there is a leader
-		// who was isolated and rejoined the network, it would stepdown, when it sends its append entry and
-		// realizes that it is no longer the up to date laeader
-		// Not required to check for a leader here
-	*/
+	// Important note: Reference 2
 	if n.st.mode == Candidate {
 		n.dispatcher.Dispatch(event{StepDown, term})
 	}
+}
+
+func (n *node) startLeader(evt event) {
 
 }

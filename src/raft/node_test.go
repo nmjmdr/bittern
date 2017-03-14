@@ -648,14 +648,14 @@ func Test_when_the_node_receives_an_append_entry_with_a_term_less_than_its_own_i
 		n.handleEvent(event)
 	}
 	sendAppendEntryResponseCalled := false
-	var gotAppendEntryResponse appendEntryResponse
-	n.transport.(*mockTransport).sendAppendEntryResponseCb = func(sendToPeer peer, ar appendEntryResponse) {
+	var gotAppendEntryResponse appendEntriesResponse
+	n.transport.(*mockTransport).sendAppendEntriesResponseCb = func(sendToPeer peer, ar appendEntriesResponse) {
 		sendAppendEntryResponseCalled = true
 		gotAppendEntryResponse = ar
 	}
 	term := uint64(2)
 	n.store.StoreInt(CurrentTermKey, term)
-	n.dispatcher.Dispatch(event{AppendEntry, &appendEntryRequest{from: peer{"peer1"}, term: (term - 1)}})
+	n.dispatcher.Dispatch(event{AppendEntries, &appendEntriesRequest{from: peer{"peer1"}, term: (term - 1)}})
 	if !sendAppendEntryResponseCalled {
 		t.Fatal("Should have called send append entry response")
 	}
@@ -675,8 +675,8 @@ func Test_when_the_node_receives_an_append_entry_and_the_entry_at_prev_log_index
 		n.handleEvent(event)
 	}
 	sendAppendEntryResponseCalled := false
-	var gotAppendEntryResponse appendEntryResponse
-	n.transport.(*mockTransport).sendAppendEntryResponseCb = func(sendToPeer peer, ar appendEntryResponse) {
+	var gotAppendEntryResponse appendEntriesResponse
+	n.transport.(*mockTransport).sendAppendEntriesResponseCb = func(sendToPeer peer, ar appendEntriesResponse) {
 		sendAppendEntryResponseCalled = true
 		gotAppendEntryResponse = ar
 	}
@@ -689,7 +689,7 @@ func Test_when_the_node_receives_an_append_entry_and_the_entry_at_prev_log_index
 		indexPassed = index
 		return entryAtPrevLogIndex, true
 	}
-	n.dispatcher.Dispatch(event{AppendEntry, &appendEntryRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex}})
+	n.dispatcher.Dispatch(event{AppendEntries, &appendEntriesRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex}})
 	if !sendAppendEntryResponseCalled {
 		t.Fatal("Should have called send append entry response")
 	}
@@ -705,7 +705,7 @@ func Test_when_the_node_receives_an_append_entry_and_the_entry_at_prev_log_index
 		// no entry was found
 		return entryAtPrevLogIndex, false
 	}
-	n.dispatcher.Dispatch(event{AppendEntry, &appendEntryRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex}})
+	n.dispatcher.Dispatch(event{AppendEntries, &appendEntriesRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex}})
 	if !sendAppendEntryResponseCalled {
 		t.Fatal("Should have called send append entry response")
 	}
@@ -733,7 +733,7 @@ func Test_when_there_is_a_mismatched_entry_in_log_append_entry_removes_it_and_th
 	n.log.(*mockLog).addAtCb = func(logIndex uint64, e entry) {
 	}
 	index := uint64(10)
-	n.appendToLog(&appendEntryRequest{prevLogIndex: index, entries: []entry{entry{term: (entryTerm + 1)}}})
+	n.appendToLog(&appendEntriesRequest{prevLogIndex: index, entries: []entry{entry{term: (entryTerm + 1)}}})
 	if !deleteFromInvoked {
 		t.Fatal("Delete from index was NOT invoked")
 	}
@@ -763,7 +763,7 @@ func Test_when_the_nodes_log_is_empty_and_all_other_conditions_met_it_accepts_lo
 	}
 	prevLogIndex := uint64(0)
 	command := "command"
-	n.dispatcher.Dispatch(event{AppendEntry, &appendEntryRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex, entries: []entry{entry{term: term, command: command}}}})
+	n.dispatcher.Dispatch(event{AppendEntries, &appendEntriesRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex, entries: []entry{entry{term: term, command: command}}}})
 	if !addAtCalled {
 		t.Fatal("Should have called log.AddAt")
 	}
@@ -794,7 +794,7 @@ func Test_when_the_nodes_is_a_candidate_and_it_accepts_log_entries_from_the_new_
 		t.Fatal("Not able to fetch current term key")
 	}
 	prevLogIndex := uint64(0)
-	n.dispatcher.Dispatch(event{AppendEntry, &appendEntryRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex, entries: []entry{entry{term: term}}}})
+	n.dispatcher.Dispatch(event{AppendEntries, &appendEntriesRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex, entries: []entry{entry{term: term}}}})
 	if !stepDownCalled {
 		t.Fatal("Should have called step down")
 	}
@@ -818,14 +818,44 @@ func Test_when_node_receieves_and_accepts_log_entries_from_the_new_leader_and_se
 	prevLogIndex := uint64(0)
 	leaderCommit := uint64(2)
 	n.log.(*mockLog).lastLogIndex = leaderCommit + 1
-	n.dispatcher.Dispatch(event{AppendEntry, &appendEntryRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex, entries: []entry{entry{term: term}}, leaderCommit: leaderCommit}})
+	n.dispatcher.Dispatch(event{AppendEntries, &appendEntriesRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex, entries: []entry{entry{term: term}}, leaderCommit: leaderCommit}})
 	if n.st.commitIndex != leaderCommit {
 		t.Fatal("Should have set the commit index to leader's commit")
 	}
 	n.log.(*mockLog).lastLogIndex = leaderCommit - 1
 	n.st.commitIndex = 0
-	n.dispatcher.Dispatch(event{AppendEntry, &appendEntryRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex, entries: []entry{entry{term: term}}, leaderCommit: leaderCommit}})
+	n.dispatcher.Dispatch(event{AppendEntries, &appendEntriesRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex, entries: []entry{entry{term: term}}, leaderCommit: leaderCommit}})
 	if n.st.commitIndex != n.log.(*mockLog).lastLogIndex {
 		t.Fatal("Should have set the commit index to last log index")
 	}
+}
+
+func Test_when_the_nodes_accepts_log_entries_from_the_new_leader_it_sets_last_heard_from_a_leader(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.log.(*mockLog).addAtCb = func(logIndex uint64, e entry) {
+	}
+	n.log.(*mockLog).entryAtCb = func(logIndex uint64) (entry, bool) {
+		return entry{}, false
+	}
+	timeNow := int64(100)
+	n.time.(*mockTime).cb = func() int64 {
+		return timeNow
+	}
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	term, ok := n.store.GetInt(CurrentTermKey)
+	if !ok {
+		t.Fatal("Not able to fetch current term key")
+	}
+	prevLogIndex := uint64(0)
+	n.dispatcher.Dispatch(event{AppendEntries, &appendEntriesRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex, entries: []entry{entry{term: term}}}})
+	if n.st.lastHeardFromALeader != timeNow {
+		t.Fatal("Should have set last heard from a leader")
+	}
+}
+
+func Test_when_the_node_starts_as_leader_it_sends_initial_heartbeat_to_all_nodes(t *testing.T) {
+	t.Fatal("Not implemented")
 }

@@ -10,7 +10,7 @@ const (
 	GotVoteResponse
 	StepDown
 	GotRequestForVote
-	AppendEntry
+	AppendEntries
 )
 
 type event struct {

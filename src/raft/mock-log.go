@@ -36,12 +36,14 @@ func (m *mockLog) EntryAt(index uint64) (entry, bool) {
 func (m *mockLog) AddAt(index uint64, e entry) {
 	if m.addAtCb != nil {
 		m.addAtCb(index, e)
+		return
 	}
 	panic("Mock log - addAtCb was not set, but AddAt function was invoked, check the test setup")
 }
 func (m *mockLog) DeleteFrom(index uint64) {
 	if m.deleteFromCb != nil {
 		m.deleteFromCb(index)
+		return
 	}
 	panic("Mock log - deleteFromCb was not set, but DeleteFrom function was invoked, check the test setup")
 }

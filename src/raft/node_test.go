@@ -668,7 +668,7 @@ func Test_when_the_node_receives_an_append_entry_with_a_term_less_than_its_own_i
 }
 
 // append entries, rule 2. Reply false if log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm (§5.3)
-func Test_when_the_node_receives_an_append_entry_and_the_entry_at_prev_log_indexs_does_not_match_the_prev_log_term_on_term(t *testing.T) {
+func Test_when_the_node_receives_an_append_entry_and_the_entry_at_prev_log_indexs_does_not_match_the_prev_log_term_on_term_it_rejects_it(t *testing.T) {
 	n := createNode()
 	n.boot()
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
@@ -716,3 +716,30 @@ func Test_when_the_node_receives_an_append_entry_and_the_entry_at_prev_log_index
 		t.Fatal("Should have rejected the append entry response as the test would have returned as no entry found at prevLogIndex")
 	}
 }
+
+func Test_when_there_is_a_mismatched_entry_in_log_append_entry_removes_it_and_those_that_follow_it(t *testing.T) {
+	n := createNode()
+	n.boot()
+	entryTerm := uint64(2)
+	n.log.(*mockLog).entryAtCb = func(logIndex uint64) (entry,bool) {
+		return entry{term:entryTerm},true
+	}
+	deleteFromInvoked := false
+	deleteFromIndex := uint64(0)
+	n.log.(*mockLog).deleteFromCb = func(index uint64) {
+		deleteFromIndex = index
+		deleteFromInvoked = true
+	}
+	n.log.(*mockLog).addAtCb = func(logIndex uint64,e entry) {
+	}
+	index := uint64(10)
+	n.appendToLog(&appendEntryRequest{prevLogIndex:index, entries:[]entry{entry{term:(entryTerm+1)}}})
+	if !deleteFromInvoked {
+		t.Fatal("Delete from index was NOT invoked")
+	}
+	if deleteFromIndex != index {
+		t.Fatal("Should have invoked delete from index starting at prevLogIndex")
+	}
+}
+
+// add test for: satisfies log matching property (appendEntry) when the log is empty

@@ -61,6 +61,8 @@ func (n *node) handleEvent(event event) {
 		n.appendEntries(event)
 	case StartLeader:
 		n.startLeader(event)
+	case HeartbeatTimerTimedout:
+		n.heartbeatTimerTimedout(event)
 	default:
 		panic(fmt.Sprintf("Unknown event: %d passed to handleEvent", event.eventType))
 	}
@@ -233,16 +235,31 @@ func (n *node) appendEntries(evt event) {
 		n.dispatcher.Dispatch(event{StepDown, term})
 	}
 }
-
-func (n *node) startLeader(evt event) {
-	if n.st.mode != Leader {
-		panic("startLeader invoked when mode is not set as leader")
-	}
+func (n *node) sendHeartbeat() {
 	term := getCurrentTerm(n)
 	peers := n.whoArePeers.All()
 	n.transport.SendAppendEntriesRequest(peers,
 		appendEntriesRequest{from: peer{n.id}, term: term, prevLogTerm: n.log.LastTerm(),
 			prevLogIndex: n.log.LastIndex(), entries: nil, leaderCommit: n.st.commitIndex})
-	n.st.lastSentAppenEntriesAt = n.time.UnixNow()
+	n.st.lastSentAppendEntriesAt = n.time.UnixNow()
+}
+
+func (n *node) startLeader(evt event) {
+	if n.st.mode != Leader {
+		panic("startLeader invoked when mode is not set as leader")
+	}
+	n.sendHeartbeat()
+	n.heartbeatTimer.Start(time.Duration(timeBetweenHeartbeats) * time.Millisecond)
+}
+
+func (n *node) heartbeatTimerTimedout(evt event) {
+	if n.st.mode != Leader {
+		panic("Received heartbeat timer timedout when mode is not set as leader")
+	}
+	if (n.time.UnixNow() - n.st.lastSentAppendEntriesAt) < timeBetweenHeartbeats {
+		n.heartbeatTimer.Start(time.Duration(timeBetweenHeartbeats) * time.Millisecond)
+		return
+	}
+	n.sendHeartbeat()
 	n.heartbeatTimer.Start(time.Duration(timeBetweenHeartbeats) * time.Millisecond)
 }

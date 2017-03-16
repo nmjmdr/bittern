@@ -865,6 +865,76 @@ func Test_when_the_node_starts_as_leader_it_starts_heartbeat_timer(t *testing.T)
 	}
 }
 
-func Test_when_the_node_receives_heartbeat_timer_timedout_and_it_has_sent_append_entry_within_time_between_heartbeats_it_does_not_send_the_heartbeat(t *testing.T) {
-	t.Fatal("Not implemeneted")
+func Test_when_the_node_receives_heartbeat_timer_timedout_and_it_has_sent_append_entry_within_time_between_heartbeats_it_does_not_send_heartbeat(t *testing.T) {
+	n := createNamedNode("peer0")
+	n.whoArePeers = newMockWhoArePeers(func() []peer {
+		return []peer{}
+	})
+	n.boot()
+	n.st.mode = Leader
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	sendAppendEntriesRequestCalled := false
+	n.transport.(*mockTransport).sendAppendEntriesRequestCb = func(peers []peer, ar appendEntriesRequest) {
+		sendAppendEntriesRequestCalled = true
+	}
+	timeNow := int64(100)
+	n.time = newMockTime(func() int64 {
+		return timeNow
+	})
+	n.st.lastSentAppendEntriesAt = (timeNow - timeBetweenHeartbeats + 10)
+	n.dispatcher.Dispatch(event{HeartbeatTimerTimedout, nil})
+	if sendAppendEntriesRequestCalled {
+		t.Fatal("Should NOT have sent heartbeat")
+	}
+}
+
+func Test_when_the_node_receives_heartbeat_timer_timedout_and_it_has_NOT_sent_append_entry_within_time_between_heartbeats_it_sends_heartbeat(t *testing.T) {
+	n := createNamedNode("peer0")
+	n.whoArePeers = newMockWhoArePeers(func() []peer {
+		return []peer{}
+	})
+	n.boot()
+	n.st.mode = Leader
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	startTimerCalled := false
+	n.heartbeatTimer.(*mockTimer).startCb = func(t time.Duration) {
+		startTimerCalled = true
+	}
+	sendAppendEntriesRequestCalled := false
+	n.transport.(*mockTransport).sendAppendEntriesRequestCb = func(peers []peer, ar appendEntriesRequest) {
+		sendAppendEntriesRequestCalled = true
+	}
+	timeNow := int64(100)
+	n.time = newMockTime(func() int64 {
+		return timeNow
+	})
+	n.st.lastSentAppendEntriesAt = (timeNow - timeBetweenHeartbeats - 10)
+	n.dispatcher.Dispatch(event{HeartbeatTimerTimedout, nil})
+	if !sendAppendEntriesRequestCalled {
+		t.Fatal("Should have sent heartbeat")
+	}
+}
+
+func Test_when_the_node_receives_heartbeat_timer_timedout_it_restarts_the_heartbeat_timer(t *testing.T) {
+	n := createNamedNode("peer0")
+	n.whoArePeers = newMockWhoArePeers(func() []peer {
+		return []peer{}
+	})
+	n.boot()
+	n.st.mode = Leader
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	startTimerCalled := false
+	n.heartbeatTimer.(*mockTimer).startCb = func(t time.Duration) {
+		startTimerCalled = true
+	}
+	n.dispatcher.Dispatch(event{HeartbeatTimerTimedout, nil})
+	if !startTimerCalled {
+		t.Fatal("Should have called start timer for heartbeat timer")
+	}
 }

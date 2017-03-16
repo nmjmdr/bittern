@@ -19,7 +19,6 @@ func (t *mockTransport) SendVoteResponse(sendToPeer peer, vr voteResponse) {
 		t.sendVoteResponseCb(sendToPeer, vr)
 		return
 	}
-	panic("sendVoteResponseCb was not set, but mockTransport.SendVoteResponse was invoked")
 }
 
 func (t *mockTransport) SendAppendEntryResponse(sendToPeer peer, ar appendEntriesResponse) {
@@ -27,7 +26,6 @@ func (t *mockTransport) SendAppendEntryResponse(sendToPeer peer, ar appendEntrie
 		t.sendAppendEntriesResponseCb(sendToPeer, ar)
 		return
 	}
-	panic("sendAppendEntriesResponseCb was not set, but mockTransport.SendAppendEntryResponse was invoked")
 }
 
 func (t *mockTransport) SendAppendEntriesRequest(peers []peer, ar appendEntriesRequest) {
@@ -35,5 +33,4 @@ func (t *mockTransport) SendAppendEntriesRequest(peers []peer, ar appendEntriesR
 		t.sendAppendEntriesRequestCb(peers, ar)
 		return
 	}
-	panic("sendAppendEntriesRequestCb was not set, but mockTransport.SendAppendEntriesRequest was invoked")
 }

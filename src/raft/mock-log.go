@@ -30,7 +30,7 @@ func (m *mockLog) EntryAt(index uint64) (entry, bool) {
 	if m.entryAtCb != nil {
 		return m.entryAtCb(index)
 	}
-	panic("Mock log - entryAtCb was not set, but EntryAt function was invoked, check the test setup")
+	panic("MockLog.EntryAt called, but the callback was not setup, check test setup")
 }
 
 func (m *mockLog) AddAt(index uint64, e entry) {
@@ -38,12 +38,10 @@ func (m *mockLog) AddAt(index uint64, e entry) {
 		m.addAtCb(index, e)
 		return
 	}
-	panic("Mock log - addAtCb was not set, but AddAt function was invoked, check the test setup")
 }
 func (m *mockLog) DeleteFrom(index uint64) {
 	if m.deleteFromCb != nil {
 		m.deleteFromCb(index)
 		return
 	}
-	panic("Mock log - deleteFromCb was not set, but DeleteFrom function was invoked, check the test setup")
 }

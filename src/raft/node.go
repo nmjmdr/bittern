@@ -7,6 +7,7 @@ import (
 )
 
 const CurrentTermKey = "current-term"
+const timeBetweenHeartbeats = 50
 
 type node struct {
 	st              *state
@@ -22,6 +23,7 @@ type node struct {
 	transport           Transport
 	votedFor            VotedFor
 	log                 Log
+	heartbeatTimer      Timer
 }
 
 func newNode(id string) *node {
@@ -239,4 +241,5 @@ func (n *node) startLeader(evt event) {
 		appendEntriesRequest{from: peer{n.id}, term: term, prevLogTerm: n.log.LastTerm(),
 			prevLogIndex: n.log.LastIndex(), entries: nil, leaderCommit: n.st.commitIndex})
 	n.st.lastSentAppenEntriesAt = n.time.UnixNow()
+	n.heartbeatTimer.Start(time.Duration(timeBetweenHeartbeats) * time.Millisecond)
 }

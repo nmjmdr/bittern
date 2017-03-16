@@ -11,7 +11,8 @@ func createNamedNode(id string) *node {
 	n.dispatcher = newMockDispathcer()
 	n.store = newInMemoryStore()
 	n.votedFor = newVotedForStore(n.store)
-	n.electionExpiryTimer = newMockElectionTimeoutTimer()
+	n.electionExpiryTimer = newMockTimer()
+	n.heartbeatTimer = newMockTimer()
 	n.log = newMockLog(uint64(0), uint64(0))
 	n.whoArePeers = newMockWhoArePeers(func() []peer {
 		return []peer{peer{"1"}}
@@ -838,5 +839,26 @@ func Test_when_the_node_starts_as_leader_it_sends_initial_heartbeat_to_all_nodes
 	n.dispatcher.Dispatch(event{StartLeader, nil})
 	if !sendAppendEntriesRequestCalled && len(sentHeartbeatToPeers) != len(n.whoArePeers.All()) {
 		t.Fatal("Should have sent append entires to all peers")
+	}
+}
+
+func Test_when_the_node_starts_as_leader_it_starts_heartbeat_timer(t *testing.T) {
+	n := createNamedNode("peer0")
+	n.whoArePeers = newMockWhoArePeers(func() []peer {
+		return []peer{}
+	})
+	heartbeatTimerStartCalled := false
+	n.heartbeatTimer.(*mockTimer).startCb = func(t time.Duration) {
+		heartbeatTimerStartCalled = true
+	}
+	n.transport.(*mockTransport).sendAppendEntriesRequestCb = func(peers []peer, ar appendEntriesRequest) {
+	}
+	n.boot()
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	n.dispatcher.Dispatch(event{StartLeader, nil})
+	if !heartbeatTimerStartCalled {
+		t.Fatal("Should have called heartbear timer start")
 	}
 }

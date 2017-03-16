@@ -105,10 +105,7 @@ func (n *node) startCandidate(event event) {
 	if n.st.mode != Candidate {
 		panic("Mode is not set to candidate in startCandidate")
 	}
-	term, ok := n.store.GetInt(CurrentTermKey)
-	if !ok {
-		panic("Not able to to obtain current term in startCandidate")
-	}
+	term := getCurrentTerm(n)
 	term = term + 1
 	n.store.StoreInt(CurrentTermKey, term)
 	n.st.votesGot = n.st.votesGot + 1
@@ -135,10 +132,7 @@ func (n *node) gotVote(evt event) {
 }
 
 func (n *node) handleRejectedVoteResponse(voteResponse *voteResponse) {
-	term, ok := n.store.GetInt(CurrentTermKey)
-	if !ok {
-		panic("Not able to to obtain current term in handleRejectedVoteResponse")
-	}
+	term := getCurrentTerm(n)
 	if term < voteResponse.term {
 		n.dispatcher.Dispatch(event{StepDown, term})
 	}
@@ -185,10 +179,7 @@ func (n *node) isCandidatesLogUptoDate(voteRequest *voteRequest) bool {
 
 func (n *node) gotRequestForVote(evt event) {
 	voteRequest := evt.payload.(*voteRequest)
-	term, ok := n.store.GetInt(CurrentTermKey)
-	if !ok {
-		panic("Not able to to obtain current term in gotRequestForVote")
-	}
+	term := getCurrentTerm(n)
 	if voteRequest.term < term {
 		n.transport.SendVoteResponse(voteRequest.from, voteResponse{false, term, peer{n.id}})
 		return
@@ -219,10 +210,7 @@ func (n *node) appendToLog(request *appendEntriesRequest) {
 
 func (n *node) appendEntries(evt event) {
 	request := evt.payload.(*appendEntriesRequest)
-	term, ok := n.store.GetInt(CurrentTermKey)
-	if !ok {
-		panic("Not able to to obtain current term in gotRequestForVote")
-	}
+	term := getCurrentTerm(n)
 	if request.term < term {
 		n.transport.SendAppendEntryResponse(request.from, appendEntriesResponse{false, term})
 		return
@@ -245,5 +233,10 @@ func (n *node) appendEntries(evt event) {
 }
 
 func (n *node) startLeader(evt event) {
+	term := getCurrentTerm(n)
+	peers := n.whoArePeers.All()
+	n.transport.SendAppendEntriesRequest(peers,
+		appendEntriesRequest{from: peer{n.id}, term: term, prevLogTerm: n.log.LastTerm(),
+			prevLogIndex: n.log.LastIndex(), entries: nil, leaderCommit: n.st.commitIndex})
 
 }

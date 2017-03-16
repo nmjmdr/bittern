@@ -17,3 +17,11 @@ func min(a uint64, b uint64) uint64 {
 	}
 	return a
 }
+
+func getCurrentTerm(n *node) uint64 {
+	term, ok := n.store.GetInt(CurrentTermKey)
+	if !ok {
+		panic("Not able to to obtain current term")
+	}
+	return term
+}

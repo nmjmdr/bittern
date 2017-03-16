@@ -40,8 +40,8 @@ func Test_when_the_node_boots_it_should_start_as_a_follower(t *testing.T) {
 func Test_when_the_node_boots_it_should_set_the_term_to_zero(t *testing.T) {
 	n := createNode()
 	n.boot()
-	currentTerm, ok := n.store.GetInt(CurrentTermKey)
-	if !ok || currentTerm != 0 {
+	currentTerm := getCurrentTerm(n)
+	if currentTerm != 0 {
 		t.Fatal("Should have initialized current term to 0")
 	}
 }
@@ -146,10 +146,7 @@ func Test_when_the_mode_is_candidate_and_start_candidate_is_handled_it_increment
 	n := createNode()
 	n.boot()
 	n.st.mode = Candidate
-	previousTerm, ok := n.store.GetInt(CurrentTermKey)
-	if !ok {
-		t.Fatal("Cannot obtain the current term")
-	}
+	previousTerm := getCurrentTerm(n)
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 		n.handleEvent(event)
 	}
@@ -158,10 +155,7 @@ func Test_when_the_mode_is_candidate_and_start_candidate_is_handled_it_increment
 		t.Fatal("Should have been a Candidate")
 	}
 	var term uint64
-	term, ok = n.store.GetInt(CurrentTermKey)
-	if !ok {
-		t.Fatal("Cannot obtain the current term")
-	}
+	term = getCurrentTerm(n)
 	if term != previousTerm+1 {
 		t.Fatal("It should have incremented the term by 1")
 	}
@@ -273,10 +267,7 @@ func Test_when_the_mode_is_candidate_and_it_gets_a_rejected_vote_it_raises_stepd
 			n.handleEvent(event)
 		}
 	}
-	term, ok := n.store.GetInt(CurrentTermKey)
-	if !ok {
-		t.Fatal("Could not obtain current term")
-	}
+	term := getCurrentTerm(n)
 	n.dispatcher.Dispatch(event{GotVoteResponse, &voteResponse{false, (term + 1), peer{}}})
 	if !stepDownEventGenerated {
 		t.Fatal("Should have generated a stepdown event")
@@ -306,10 +297,7 @@ func verifyStartFollowerEventIsGenratedAfterStepDownEvent(t *testing.T, n *node)
 			n.handleEvent(event)
 		}
 	}
-	term, ok := n.store.GetInt(CurrentTermKey)
-	if !ok {
-		t.Fatal("Could not obtain current term")
-	}
+	term := getCurrentTerm(n)
 	n.dispatcher.Dispatch(event{StepDown, term})
 	if !startFollowerEventGenerated {
 		t.Fatal("Should have generated the start follower event")
@@ -336,10 +324,7 @@ func verifyCurrentTermIsSetToNewTermAfterStepDownEvent(t *testing.T, n *node) {
 	}
 	expectedTerm := uint64(2)
 	n.dispatcher.Dispatch(event{StepDown, expectedTerm})
-	term, ok := n.store.GetInt(CurrentTermKey)
-	if !ok {
-		t.Fatal("Could not obtain current term")
-	}
+	term := getCurrentTerm(n)
 	if term != expectedTerm {
 		t.Fatal("Should have set the current term to new term")
 	}
@@ -462,10 +447,7 @@ func Test_when_a_node_has_already_voted_for_another_peer_in_a_given_term_then_it
 		gotVoteResponse = voteResponse
 		voteResponseSentTo = sendToPeer
 	}
-	term, ok := n.store.GetInt(CurrentTermKey)
-	if !ok {
-		t.Fatal("Should be able to get current term")
-	}
+	term := getCurrentTerm(n)
 	n.log.(*mockLog).lastLogTerm = term
 	peerVotedForEarlier := "peer1"
 	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{from: peer{peerVotedForEarlier}, term: term}})
@@ -491,10 +473,7 @@ func Test_when_a_node_has_already_voted_for_a_peer_in_a_given_term_and_the_same_
 		gotVoteResponse = voteResponse
 		voteResponseSentTo = sendToPeer
 	}
-	term, ok := n.store.GetInt(CurrentTermKey)
-	if !ok {
-		t.Fatal("Should be able to get current term")
-	}
+	term := getCurrentTerm(n)
 	n.log.(*mockLog).lastLogTerm = term
 	peerVotedForEarlier := "peer1"
 	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{from: peer{peerVotedForEarlier}, term: term}})
@@ -519,10 +498,7 @@ func Test_when_a_node_has_already_voted_for_another_peer_in_a_previous_term_and_
 		gotVoteResponse = voteResponse
 		voteResponseSentTo = sendToPeer
 	}
-	term, ok := n.store.GetInt(CurrentTermKey)
-	if !ok {
-		t.Fatal("Should be able to get current term")
-	}
+	term := getCurrentTerm(n)
 	n.log.(*mockLog).lastLogTerm = term
 	peerVotedForEarlier := "peer1"
 	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{from: peer{peerVotedForEarlier}, term: term}})
@@ -757,10 +733,7 @@ func Test_when_the_nodes_log_is_empty_and_all_other_conditions_met_it_accepts_lo
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 		n.handleEvent(event)
 	}
-	term, ok := n.store.GetInt(CurrentTermKey)
-	if !ok {
-		t.Fatal("Not able to fetch current term key")
-	}
+	term := getCurrentTerm(n)
 	prevLogIndex := uint64(0)
 	command := "command"
 	n.dispatcher.Dispatch(event{AppendEntries, &appendEntriesRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex, entries: []entry{entry{term: term, command: command}}}})
@@ -789,10 +762,7 @@ func Test_when_the_nodes_is_a_candidate_and_it_accepts_log_entries_from_the_new_
 			n.handleEvent(event)
 		}
 	}
-	term, ok := n.store.GetInt(CurrentTermKey)
-	if !ok {
-		t.Fatal("Not able to fetch current term key")
-	}
+	term := getCurrentTerm(n)
 	prevLogIndex := uint64(0)
 	n.dispatcher.Dispatch(event{AppendEntries, &appendEntriesRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex, entries: []entry{entry{term: term}}}})
 	if !stepDownCalled {
@@ -811,10 +781,7 @@ func Test_when_node_receieves_and_accepts_log_entries_from_the_new_leader_and_se
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 		n.handleEvent(event)
 	}
-	term, ok := n.store.GetInt(CurrentTermKey)
-	if !ok {
-		t.Fatal("Not able to fetch current term key")
-	}
+	term := getCurrentTerm(n)
 	prevLogIndex := uint64(0)
 	leaderCommit := uint64(2)
 	n.log.(*mockLog).lastLogIndex = leaderCommit + 1
@@ -845,10 +812,7 @@ func Test_when_the_nodes_accepts_log_entries_from_the_new_leader_it_sets_last_he
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 		n.handleEvent(event)
 	}
-	term, ok := n.store.GetInt(CurrentTermKey)
-	if !ok {
-		t.Fatal("Not able to fetch current term key")
-	}
+	term := getCurrentTerm(n)
 	prevLogIndex := uint64(0)
 	n.dispatcher.Dispatch(event{AppendEntries, &appendEntriesRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex, entries: []entry{entry{term: term}}}})
 	if n.st.lastHeardFromALeader != timeNow {
@@ -857,5 +821,22 @@ func Test_when_the_nodes_accepts_log_entries_from_the_new_leader_it_sets_last_he
 }
 
 func Test_when_the_node_starts_as_leader_it_sends_initial_heartbeat_to_all_nodes(t *testing.T) {
-	t.Fatal("Not implemented")
+	n := createNamedNode("peer0")
+	n.whoArePeers = newMockWhoArePeers(func() []peer {
+		return []peer{peer{"peer1"}, peer{"peer2"}}
+	})
+	n.boot()
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	sendAppendEntriesRequestCalled := false
+	var sentHeartbeatToPeers []peer
+	n.transport.(*mockTransport).sendAppendEntriesRequestCb = func(peers []peer, ar appendEntriesRequest) {
+		sendAppendEntriesRequestCalled = true
+		sentHeartbeatToPeers = peers
+	}
+	n.dispatcher.Dispatch(event{StartLeader, nil})
+	if !sendAppendEntriesRequestCalled && len(sentHeartbeatToPeers) != len(n.whoArePeers.All()) {
+		t.Fatal("Should have sent append entires to all peers")
+	}
 }

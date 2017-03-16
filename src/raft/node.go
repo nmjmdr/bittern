@@ -63,6 +63,8 @@ func (n *node) handleEvent(event event) {
 		n.startLeader(event)
 	case HeartbeatTimerTimedout:
 		n.heartbeatTimerTimedout(event)
+	case GotAppendEntriesResponse:
+		n.gotAppendEntriesResponse(event)
 	default:
 		panic(fmt.Sprintf("Unknown event: %d passed to handleEvent", event.eventType))
 	}
@@ -230,9 +232,11 @@ func (n *node) appendEntries(evt event) {
 	if request.leaderCommit > n.st.commitIndex {
 		n.st.commitIndex = min(request.leaderCommit, n.log.LastIndex())
 	}
+	// what about leader discovering a higher term here???
+	fmt.Println("Handle discoverig a higher term on all requests and responses")
 	// Important note: Reference 2
 	if n.st.mode == Candidate {
-		n.dispatcher.Dispatch(event{StepDown, term})
+		n.dispatcher.Dispatch(event{StepDown, request.term})
 	}
 }
 func (n *node) sendHeartbeat() {
@@ -262,4 +266,16 @@ func (n *node) heartbeatTimerTimedout(evt event) {
 	}
 	n.sendHeartbeat()
 	n.heartbeatTimer.Start(time.Duration(timeBetweenHeartbeats) * time.Millisecond)
+}
+
+func (n *node) gotAppendEntriesResponse(evt event) {
+	if n.st.mode != Leader {
+		// could be a delpayed response
+		return
+	}
+	term := getCurrentTerm(n)
+	appendEntriesResponse := evt.payload.(*appendEntriesResponse)
+	if !appendEntriesResponse.success && appendEntriesResponse.term > term {
+		n.dispatcher.Dispatch(event{StepDown, appendEntriesResponse.term})
+	}
 }

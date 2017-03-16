@@ -938,3 +938,26 @@ func Test_when_the_node_receives_heartbeat_timer_timedout_it_restarts_the_heartb
 		t.Fatal("Should have called start timer for heartbeat timer")
 	}
 }
+
+func Test_when_the_leader_receives_append_entries_response_it_steps_down_if_it_discovers_a_higher_term(t *testing.T) {
+	n := createNamedNode("peer0")
+	n.whoArePeers = newMockWhoArePeers(func() []peer {
+		return []peer{}
+	})
+	n.boot()
+	n.st.mode = Leader
+	stepDownEventRaised := false
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		if event.eventType == StepDown {
+			stepDownEventRaised = true
+		} else {
+			n.handleEvent(event)
+		}
+	}
+	term := uint64(2)
+	n.store.StoreInt(CurrentTermKey,term)
+	n.dispatcher.Dispatch(event{GotAppendEntriesResponse,&appendEntriesResponse{success:false,term:(term+1)}})
+	if !stepDownEventRaised {
+		t.Fatal("Should have raised the step down event")
+	}
+}

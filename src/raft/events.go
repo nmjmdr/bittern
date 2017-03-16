@@ -12,6 +12,7 @@ const (
 	GotRequestForVote
 	AppendEntries
 	HeartbeatTimerTimedout
+	GotAppendEntriesResponse
 )
 
 type event struct {

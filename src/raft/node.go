@@ -235,6 +235,9 @@ func (n *node) appendEntries(evt event) {
 }
 
 func (n *node) startLeader(evt event) {
+	if n.st.mode != Leader {
+		panic("startLeader invoked when mode is not set as leader")
+	}
 	term := getCurrentTerm(n)
 	peers := n.whoArePeers.All()
 	n.transport.SendAppendEntriesRequest(peers,

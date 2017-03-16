@@ -11,6 +11,7 @@ const (
 	StepDown
 	GotRequestForVote
 	AppendEntries
+	HeartbeatTimerTimedout
 )
 
 type event struct {

@@ -827,6 +827,7 @@ func Test_when_the_node_starts_as_leader_it_sends_initial_heartbeat_to_all_nodes
 		return []peer{peer{"peer1"}, peer{"peer2"}}
 	})
 	n.boot()
+	n.st.mode = Leader
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 		n.handleEvent(event)
 	}
@@ -854,6 +855,7 @@ func Test_when_the_node_starts_as_leader_it_starts_heartbeat_timer(t *testing.T)
 	n.transport.(*mockTransport).sendAppendEntriesRequestCb = func(peers []peer, ar appendEntriesRequest) {
 	}
 	n.boot()
+	n.st.mode = Leader
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 		n.handleEvent(event)
 	}
@@ -861,4 +863,8 @@ func Test_when_the_node_starts_as_leader_it_starts_heartbeat_timer(t *testing.T)
 	if !heartbeatTimerStartCalled {
 		t.Fatal("Should have called heartbear timer start")
 	}
+}
+
+func Test_when_the_node_receives_heartbeat_timer_timedout_and_it_has_sent_append_entry_within_time_between_heartbeats_it_does_not_send_the_heartbeat(t *testing.T) {
+	t.Fatal("Not implemeneted")
 }

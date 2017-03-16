@@ -140,7 +140,7 @@ func (n *node) gotVote(evt event) {
 func (n *node) handleRejectedVoteResponse(voteResponse *voteResponse) {
 	term := getCurrentTerm(n)
 	if term < voteResponse.term {
-		n.dispatcher.Dispatch(event{StepDown, term})
+		n.dispatcher.Dispatch(event{StepDown, voteResponse.term})
 	}
 }
 
@@ -160,12 +160,8 @@ func (n *node) handleSuccessfulVoteResponse(*voteResponse) {
 }
 
 func (n *node) haveIAlreadyVotedForAnotherPeerForTheTerm(term uint64, peerAskingForVote string) bool {
-	// have we already voted for another peer in request's term?
-	// If votedFor is empty or candidateId, then grant vote
-	// where votedFor => candidateId that received vote in current term (or null if none)
-	// who did we vote for in the term?
+	//NOTE Ref: notes 3.
 	candidateVotedFor := n.votedFor.Get(term)
-
 	if candidateVotedFor == "" || candidateVotedFor == peerAskingForVote {
 		return false
 	}
@@ -179,8 +175,18 @@ func (n *node) isCandidatesLogUptoDate(voteRequest *voteRequest) bool {
 	} else if (voteRequest.lastLogTerm == n.log.LastTerm()) && (voteRequest.lastLogIndex >= n.log.LastIndex()) {
 		return true
 	}
-
 	return false
+}
+
+func (n *node) checkIfHigherTerm(termGot uint64) {
+	term := getCurrentTerm(n)
+	if termGot > term {
+		if n.st.mode != Follower {
+			n.dispatcher.Dispatch(event{StepDown, termGot})
+		} else {
+			n.store.StoreInt(CurrentTermKey, termGot)
+		}
+	}
 }
 
 func (n *node) gotRequestForVote(evt event) {
@@ -190,6 +196,7 @@ func (n *node) gotRequestForVote(evt event) {
 		n.transport.SendVoteResponse(voteRequest.from, voteResponse{false, term, peer{n.id}})
 		return
 	}
+	n.checkIfHigherTerm(voteRequest.term)
 	if n.haveIAlreadyVotedForAnotherPeerForTheTerm(voteRequest.term, voteRequest.from.id) {
 		n.transport.SendVoteResponse(voteRequest.from, voteResponse{false, term, peer{n.id}})
 		return
@@ -223,6 +230,12 @@ func (n *node) appendEntries(evt event) {
 	}
 	// we heard from the leader here: all the other checks below are for log matching, think about this later!!!
 	n.st.lastHeardFromALeader = n.time.UnixNow()
+	// Important note: Reference 2
+	if n.st.mode == Candidate {
+		n.dispatcher.Dispatch(event{StepDown, request.term})
+	} else {
+		n.checkIfHigherTerm(request.term)
+	}
 	entry, ok := n.log.EntryAt(request.prevLogIndex)
 	if ok && entry.term != request.prevLogTerm {
 		n.transport.SendAppendEntryResponse(request.from, appendEntriesResponse{false, term})
@@ -231,12 +244,6 @@ func (n *node) appendEntries(evt event) {
 	n.appendToLog(request)
 	if request.leaderCommit > n.st.commitIndex {
 		n.st.commitIndex = min(request.leaderCommit, n.log.LastIndex())
-	}
-	// what about leader discovering a higher term here???
-	fmt.Println("Handle discoverig a higher term on all requests and responses")
-	// Important note: Reference 2
-	if n.st.mode == Candidate {
-		n.dispatcher.Dispatch(event{StepDown, request.term})
 	}
 }
 func (n *node) sendHeartbeat() {

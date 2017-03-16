@@ -305,6 +305,21 @@ func verifyStartFollowerEventIsGenratedAfterStepDownEvent(t *testing.T, n *node)
 	}
 }
 
+func Test_when_the_node_gets_step_down_event_it_sets_the_term_to_new_term(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.st.mode = Leader
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	newTerm := (getCurrentTerm(n) + 1)
+	n.dispatcher.Dispatch(event{StepDown, newTerm})
+	term := getCurrentTerm(n)
+	if term != newTerm {
+		t.Fatal("Should have set the term to new term after handling step down event")
+	}
+}
+
 func Test_when_the_mode_is_candidate_and_it_gets_step_down_event_it_sets_the_current_term_to_new_term(t *testing.T) {
 	n := createNode()
 	n.boot()
@@ -618,6 +633,53 @@ func Test_when_the_nodes_last_log_term_is_smaller_than_vote_requests_last_log_te
 	}
 }
 
+func Test_when_the_node_is_follower_and_it_gets_a_request_for_vote_with_higher_term_it_sets_its_term_to_the_higher_term(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	term := uint64(1)
+	n.store.StoreInt(CurrentTermKey, term)
+	higherTerm := term + 1
+	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{from: peer{"some-peer"}, term: higherTerm}})
+	setTerm := getCurrentTerm(n)
+	if setTerm != higherTerm {
+		t.Fatal("Should have set the term to the higher term that was discovered")
+	}
+}
+
+func Test_when_the_node_is_candiate_and_it_gets_a_request_for_vote_with_higher_term_it_steps_down(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.st.mode = Candidate
+	verifyIfStepDownIsRaisedWhenHigherTermIsDiscovered(n, t)
+}
+
+func Test_when_the_node_is_Leader_and_it_gets_a_request_for_vote_with_higher_term_it_steps_down(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.st.mode = Leader
+	verifyIfStepDownIsRaisedWhenHigherTermIsDiscovered(n, t)
+}
+
+func verifyIfStepDownIsRaisedWhenHigherTermIsDiscovered(n *node, t *testing.T) {
+	stepDownRaised := false
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		if event.eventType == StepDown {
+			stepDownRaised = true
+		}
+		n.handleEvent(event)
+	}
+	term := uint64(1)
+	n.store.StoreInt(CurrentTermKey, term)
+	higherTerm := term + 1
+	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{from: peer{"some-peer"}, term: higherTerm}})
+	if !stepDownRaised {
+		t.Fatal("Should have raised step down event")
+	}
+}
+
 func Test_when_the_node_receives_an_append_entry_with_a_term_less_than_its_own_it_rejects_it(t *testing.T) {
 	n := createNode()
 	n.boot()
@@ -750,8 +812,6 @@ func Test_when_the_nodes_is_a_candidate_and_it_accepts_log_entries_from_the_new_
 	n := createNode()
 	n.boot()
 	n.st.mode = Candidate
-	n.log.(*mockLog).addAtCb = func(logIndex uint64, e entry) {
-	}
 	n.log.(*mockLog).entryAtCb = func(logIndex uint64) (entry, bool) {
 		return entry{}, false
 	}
@@ -768,6 +828,50 @@ func Test_when_the_nodes_is_a_candidate_and_it_accepts_log_entries_from_the_new_
 	n.dispatcher.Dispatch(event{AppendEntries, &appendEntriesRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex, entries: []entry{entry{term: term}}}})
 	if !stepDownCalled {
 		t.Fatal("Should have called step down")
+	}
+}
+
+func Test_when_the_nodes_is_a_leader_and_it_gets_append_entry_from_another_leader_with_higher_term_it_steps_down(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.st.mode = Leader
+	n.log.(*mockLog).entryAtCb = func(logIndex uint64) (entry, bool) {
+		return entry{}, false
+	}
+	stepDownCalled := false
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		if event.eventType == StepDown {
+			stepDownCalled = true
+		} else {
+			n.handleEvent(event)
+		}
+	}
+	term := getCurrentTerm(n)
+	higherTerm := term + 1
+	prevLogIndex := uint64(0)
+	n.dispatcher.Dispatch(event{AppendEntries, &appendEntriesRequest{from: peer{"peer1"}, term: higherTerm, prevLogTerm: term, prevLogIndex: prevLogIndex, entries: []entry{entry{term: term}}}})
+	if !stepDownCalled {
+		t.Fatal("Should have called step down")
+	}
+}
+
+func Test_when_the_nodes_is_a_follower_and_it_gets_append_entry_from_a_leader_with_higher_term_it_sets_its_own_term_to_higher_term(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.log.(*mockLog).entryAtCb = func(logIndex uint64) (entry, bool) {
+		return entry{}, false
+	}
+
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	term := getCurrentTerm(n)
+	higherTerm := term + 1
+	prevLogIndex := uint64(0)
+	n.dispatcher.Dispatch(event{AppendEntries, &appendEntriesRequest{from: peer{"peer1"}, term: higherTerm, prevLogTerm: term, prevLogIndex: prevLogIndex, entries: []entry{entry{term: term}}}})
+	setTerm := getCurrentTerm(n)
+	if setTerm != higherTerm {
+		t.Fatal("Should have set to higher term")
 	}
 }
 
@@ -955,8 +1059,8 @@ func Test_when_the_leader_receives_append_entries_response_it_steps_down_if_it_d
 		}
 	}
 	term := uint64(2)
-	n.store.StoreInt(CurrentTermKey,term)
-	n.dispatcher.Dispatch(event{GotAppendEntriesResponse,&appendEntriesResponse{success:false,term:(term+1)}})
+	n.store.StoreInt(CurrentTermKey, term)
+	n.dispatcher.Dispatch(event{GotAppendEntriesResponse, &appendEntriesResponse{success: false, term: (term + 1)}})
 	if !stepDownEventRaised {
 		t.Fatal("Should have raised the step down event")
 	}

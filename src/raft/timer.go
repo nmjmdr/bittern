@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-type ElectionTimeoutTimer interface {
+type Timer interface {
 	Start(t time.Duration)
 	Stop()
 }

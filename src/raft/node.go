@@ -15,7 +15,7 @@ type node struct {
 
 	dispatcher          Dispatcher
 	store               Store
-	electionExpiryTimer ElectionTimeoutTimer
+	electionExpiryTimer Timer
 	time                Time
 	campaigner          Campaigner
 	whoArePeers         WhoArePeers
@@ -238,5 +238,5 @@ func (n *node) startLeader(evt event) {
 	n.transport.SendAppendEntriesRequest(peers,
 		appendEntriesRequest{from: peer{n.id}, term: term, prevLogTerm: n.log.LastTerm(),
 			prevLogIndex: n.log.LastIndex(), entries: nil, leaderCommit: n.st.commitIndex})
-
+	n.st.lastSentAppenEntriesAt = n.time.UnixNow()
 }

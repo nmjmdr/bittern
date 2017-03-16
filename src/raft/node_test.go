@@ -80,7 +80,7 @@ func Test_when_start_follower_event_is_handled_it_should_start_the_election_time
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 		n.handleEvent(event)
 	}
-	n.electionExpiryTimer.(*mockElectionTimeoutTimer).startCb = func(t time.Duration) {
+	n.electionExpiryTimer.(*mockTimer).startCb = func(t time.Duration) {
 		timerStarted = true
 	}
 	n.boot()
@@ -185,10 +185,10 @@ func Test_when_the_mode_is_candidate_and_start_candidate_is_handled_it_restarts_
 	n.st.mode = Candidate
 	startTimerCalled := false
 	stopTimerCalled := false
-	n.electionExpiryTimer.(*mockElectionTimeoutTimer).startCb = func(t time.Duration) {
+	n.electionExpiryTimer.(*mockTimer).startCb = func(t time.Duration) {
 		startTimerCalled = true
 	}
-	n.electionExpiryTimer.(*mockElectionTimeoutTimer).stopCb = func() {
+	n.electionExpiryTimer.(*mockTimer).stopCb = func() {
 		stopTimerCalled = true
 	}
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {

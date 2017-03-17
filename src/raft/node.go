@@ -276,13 +276,10 @@ func (n *node) heartbeatTimerTimedout(evt event) {
 }
 
 func (n *node) gotAppendEntriesResponse(evt event) {
-	if n.st.mode != Leader {
-		// could be a delpayed response
-		return
-	}
-	term := getCurrentTerm(n)
 	appendEntriesResponse := evt.payload.(*appendEntriesResponse)
-	if !appendEntriesResponse.success && appendEntriesResponse.term > term {
-		n.dispatcher.Dispatch(event{StepDown, appendEntriesResponse.term})
+	if appendEntriesResponse.success && n.st.mode == Leader {
+		// process success response here
+	} else {
+		n.checkIfHigherTerm(appendEntriesResponse.term)
 	}
 }

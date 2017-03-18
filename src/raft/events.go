@@ -8,7 +8,6 @@ const (
 	StartCandidate
 	StartLeader
 	GotVoteResponse
-	StepDown
 	GotRequestForVote
 	AppendEntries
 	HeartbeatTimerTimedout

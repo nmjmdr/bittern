@@ -53,8 +53,6 @@ func (n *node) handleEvent(event event) {
 		n.startCandidate(event)
 	case GotVoteResponse:
 		n.gotVote(event)
-	case StepDown:
-		n.stepDown(event)
 	case GotRequestForVote:
 		n.gotRequestForVote(event)
 	case AppendEntries:
@@ -126,17 +124,12 @@ func (n *node) didIGetMajority() bool {
 
 func (n *node) gotVote(evt event) {
 	voteResponse := evt.payload.(*voteResponse)
-	n.checkIfHigherTerm(voteResponse.term)
+	if n.isHigherTerm(voteResponse.term) {
+		n.handleHigherTermReceived(voteResponse.term)
+	}
 	if voteResponse.success {
 		n.handleSuccessfulVoteResponse(voteResponse)
 	}
-}
-
-func (n *node) stepDown(evt event) {
-	newTerm := evt.payload.(uint64)
-	n.store.StoreInt(CurrentTermKey, newTerm)
-	n.st.mode = Follower
-	n.dispatcher.Dispatch(event{StartFollower, nil})
 }
 
 func (n *node) handleSuccessfulVoteResponse(*voteResponse) {
@@ -166,14 +159,16 @@ func (n *node) isCandidatesLogUptoDate(voteRequest *voteRequest) bool {
 	return false
 }
 
-func (n *node) checkIfHigherTerm(termGot uint64) {
+func (n *node) isHigherTerm(termGot uint64) bool {
 	term := getCurrentTerm(n)
-	if termGot > term {
-		if n.st.mode != Follower {
-			n.dispatcher.Dispatch(event{StepDown, termGot})
-		} else {
-			n.store.StoreInt(CurrentTermKey, termGot)
-		}
+	return termGot > term
+}
+
+func (n *node) handleHigherTermReceived(termGot uint64) {
+	n.store.StoreInt(CurrentTermKey, termGot)
+	if n.st.mode != Follower {
+		n.st.mode = Follower
+		n.dispatcher.Dispatch(event{StartFollower, nil})
 	}
 }
 
@@ -184,7 +179,9 @@ func (n *node) gotRequestForVote(evt event) {
 		n.transport.SendVoteResponse(voteRequest.from, voteResponse{false, term, peer{n.id}})
 		return
 	}
-	n.checkIfHigherTerm(voteRequest.term)
+	if n.isHigherTerm(voteRequest.term) {
+		n.handleHigherTermReceived(voteRequest.term)
+	}
 	if n.haveIAlreadyVotedForAnotherPeerForTheTerm(voteRequest.term, voteRequest.from.id) {
 		n.transport.SendVoteResponse(voteRequest.from, voteResponse{false, term, peer{n.id}})
 		return
@@ -209,6 +206,12 @@ func (n *node) appendToLog(request *appendEntriesRequest) {
 	}
 }
 
+func (n *node) stepDown(term uint64) {
+	n.st.mode = Follower
+	n.store.StoreInt(CurrentTermKey, term)
+	n.dispatcher.Dispatch(event{StartFollower, nil})
+}
+
 func (n *node) appendEntries(evt event) {
 	request := evt.payload.(*appendEntriesRequest)
 	term := getCurrentTerm(n)
@@ -219,10 +222,10 @@ func (n *node) appendEntries(evt event) {
 	// we heard from the leader here: all the other checks below are for log matching, think about this later!!!
 	n.st.lastHeardFromALeader = n.time.UnixNow()
 	// Important note: Reference 2
-	if n.st.mode == Candidate {
-		n.dispatcher.Dispatch(event{StepDown, request.term})
-	} else {
-		n.checkIfHigherTerm(request.term)
+	if n.isHigherTerm(request.term) {
+		n.handleHigherTermReceived(request.term)
+	} else if n.st.mode == Candidate {
+		n.dispatcher.Dispatch(event{StartFollower, nil})
 	}
 	entry, ok := n.log.EntryAt(request.prevLogIndex)
 	if ok && entry.term != request.prevLogTerm {
@@ -267,8 +270,8 @@ func (n *node) gotAppendEntriesResponse(evt event) {
 	appendEntriesResponse := evt.payload.(*appendEntriesResponse)
 	if appendEntriesResponse.success && n.st.mode == Leader {
 		// process success response here
-	} else {
-		n.checkIfHigherTerm(appendEntriesResponse.term)
+	} else if n.isHigherTerm(appendEntriesResponse.term) {
+		n.handleHigherTermReceived(appendEntriesResponse.term)
 	}
 	// Look at this for understanding of commiting in the prescence of network partition: https://thesecretlivesofdata.com/raft/
 	// Especially: if a leader cannot commit to majority of the nodes, it should stay uncommitted

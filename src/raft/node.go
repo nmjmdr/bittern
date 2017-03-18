@@ -125,22 +125,10 @@ func (n *node) didIGetMajority() bool {
 }
 
 func (n *node) gotVote(evt event) {
-	if n.st.mode != Candidate {
-		// must be a delayed vote by a node, ignore it
-		return
-	}
 	voteResponse := evt.payload.(*voteResponse)
+	n.checkIfHigherTerm(voteResponse.term)
 	if voteResponse.success {
 		n.handleSuccessfulVoteResponse(voteResponse)
-	} else {
-		n.handleRejectedVoteResponse(voteResponse)
-	}
-}
-
-func (n *node) handleRejectedVoteResponse(voteResponse *voteResponse) {
-	term := getCurrentTerm(n)
-	if term < voteResponse.term {
-		n.dispatcher.Dispatch(event{StepDown, voteResponse.term})
 	}
 }
 

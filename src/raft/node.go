@@ -282,4 +282,6 @@ func (n *node) gotAppendEntriesResponse(evt event) {
 	} else {
 		n.checkIfHigherTerm(appendEntriesResponse.term)
 	}
+	// Look at this for understanding of commiting in the prescence of network partition: https://thesecretlivesofdata.com/raft/
+	// Especially: if a leader cannot commit to majority of the nodes, it should stay uncommitted
 }

@@ -234,6 +234,8 @@ func (n *node) appendEntries(evt event) {
 	} else if n.st.mode == Candidate {
 		n.dispatcher.Dispatch(event{StartFollower, nil})
 	}
+	// we transition to follower and then continue to handle append entry request
+	// see if this code can be refactored - and remove the comment
 	entry, ok := n.log.EntryAt(request.prevLogIndex)
 	if ok && entry.term != request.prevLogTerm {
 		n.transport.SendAppendEntryResponse(request.from, appendEntriesResponse{false, term})

@@ -172,14 +172,7 @@ func (n *node) handleHigherTermReceived(termGot uint64) {
 	}
 }
 
-func (n *node) gotRequestForVote(evt event) {
-	voteRequest := evt.payload.(*voteRequest)
-	term := getCurrentTerm(n)
-	if voteRequest.term < term {
-		n.transport.SendVoteResponse(voteRequest.from, voteResponse{false, term, peer{n.id}})
-		return
-	}
-
+func (n *node) decideVoteResponse(voteRequest *voteRequest, term uint64) voteResponse {
 	var response voteResponse
 	if n.haveIAlreadyVotedForAnotherPeerForTheTerm(voteRequest.term, voteRequest.from.id) {
 		response = voteResponse{false, term, peer{n.id}}
@@ -188,7 +181,17 @@ func (n *node) gotRequestForVote(evt event) {
 	} else {
 		response = voteResponse{true, term, peer{n.id}}
 	}
+	return response
+}
 
+func (n *node) gotRequestForVote(evt event) {
+	voteRequest := evt.payload.(*voteRequest)
+	term := getCurrentTerm(n)
+	if voteRequest.term < term {
+		n.transport.SendVoteResponse(voteRequest.from, voteResponse{false, term, peer{n.id}})
+		return
+	}
+	response := n.decideVoteResponse(voteRequest, term)
 	if response.success {
 		n.votedFor.Store(voteRequest.term, voteRequest.from.id)
 	}

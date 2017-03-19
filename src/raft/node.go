@@ -179,19 +179,23 @@ func (n *node) gotRequestForVote(evt event) {
 		n.transport.SendVoteResponse(voteRequest.from, voteResponse{false, term, peer{n.id}})
 		return
 	}
+
+	var response voteResponse
+	if n.haveIAlreadyVotedForAnotherPeerForTheTerm(voteRequest.term, voteRequest.from.id) {
+		response = voteResponse{false, term, peer{n.id}}
+	} else if !n.isCandidatesLogUptoDate(voteRequest) {
+		response = voteResponse{false, term, peer{n.id}}
+	} else {
+		response = voteResponse{true, term, peer{n.id}}
+	}
+
+	if response.success {
+		n.votedFor.Store(voteRequest.term, voteRequest.from.id)
+	}
+	n.transport.SendVoteResponse(voteRequest.from, response)
 	if n.isHigherTerm(voteRequest.term) {
 		n.handleHigherTermReceived(voteRequest.term)
 	}
-	if n.haveIAlreadyVotedForAnotherPeerForTheTerm(voteRequest.term, voteRequest.from.id) {
-		n.transport.SendVoteResponse(voteRequest.from, voteResponse{false, term, peer{n.id}})
-		return
-	}
-	if !n.isCandidatesLogUptoDate(voteRequest) {
-		n.transport.SendVoteResponse(voteRequest.from, voteResponse{false, term, peer{n.id}})
-		return
-	}
-	n.votedFor.Store(voteRequest.term, voteRequest.from.id)
-	n.transport.SendVoteResponse(voteRequest.from, voteResponse{true, term, peer{n.id}})
 }
 
 func (n *node) appendToLog(request *appendEntriesRequest) {

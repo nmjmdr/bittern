@@ -126,8 +126,8 @@ func (n *node) gotVote(evt event) {
 	voteResponse := evt.payload.(*voteResponse)
 	if n.isHigherTerm(voteResponse.term) {
 		n.handleHigherTermReceived(voteResponse.term)
-	}
-	if voteResponse.success {
+
+	} else if voteResponse.success {
 		n.handleSuccessfulVoteResponse(voteResponse)
 	}
 }
@@ -275,4 +275,6 @@ func (n *node) gotAppendEntriesResponse(evt event) {
 	}
 	// Look at this for understanding of commiting in the prescence of network partition: https://thesecretlivesofdata.com/raft/
 	// Especially: if a leader cannot commit to majority of the nodes, it should stay uncommitted
+	// Reference: point 5> in notes
+
 }

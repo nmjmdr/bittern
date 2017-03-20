@@ -611,7 +611,7 @@ func Test_when_the_node_receives_an_append_entries_with_a_term_less_than_its_own
 }
 
 // append entries, rule 2. Reply false if log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm (§5.3)
-func Test_when_the_node_receives_an_append_entries_and_the_entry_at_prev_log_indexs_does_not_match_the_prev_log_term_on_term_it_rejects_it(t *testing.T) {
+func Test_when_the_node_receives_an_append_entries_and_the_entry_at_prev_log_index_does_not_match_the_prev_log_term_on_term_it_rejects_it(t *testing.T) {
 	n := createNode()
 	n.boot()
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {

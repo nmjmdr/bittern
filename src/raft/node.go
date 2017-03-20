@@ -236,6 +236,10 @@ func (n *node) appendEntries(evt event) {
 	}
 	// we transition to follower and then continue to handle append entry request
 	// see if this code can be refactored - and remove the comment
+	// TO DO: How does this work if the node's log is empty?
+	// What is the first command passed as?
+	// Scenario: a node's log is empty, the leader sends an append entry with index that is further ahead
+	// The node rejects it, when does it start accepting the first entry?
 	entry, ok := n.log.EntryAt(request.prevLogIndex)
 	if ok && entry.term != request.prevLogTerm {
 		n.transport.SendAppendEntriesResponse(request.from, appendEntriesResponse{false, term})
@@ -245,6 +249,7 @@ func (n *node) appendEntries(evt event) {
 	if request.leaderCommit > n.st.commitIndex {
 		n.st.commitIndex = min(request.leaderCommit, n.log.LastIndex())
 	}
+	n.transport.SendAppendEntriesResponse(request.from, appendEntriesResponse{true, term})
 }
 func (n *node) sendHeartbeat() {
 	term := getCurrentTerm(n)

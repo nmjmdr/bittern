@@ -969,3 +969,32 @@ func Test_when_the_leader_receives_append_entries_response_it_steps_down_if_it_d
 		t.Fatal("Should have raised the step down event")
 	}
 }
+
+func Test_when_the_nodes_accepts_log_entries_from_a_leader_it_sends_a_successful_append_entries_response(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.log.(*mockLog).addAtCb = func(logIndex uint64, e entry) {
+	}
+	n.log.(*mockLog).entryAtCb = func(logIndex uint64) (entry, bool) {
+		return entry{}, false
+	}
+	timeNow := int64(100)
+	n.time.(*mockTime).cb = func() int64 {
+		return timeNow
+	}
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	var response appendEntriesResponse
+	sentAppendEntriesResponse := false
+	n.transport.(*mockTransport).sendAppendEntriesResponseCb = func(to peer,ar appendEntriesResponse) {
+		sentAppendEntriesResponse = true
+		response = ar
+	}
+	term := getCurrentTerm(n)
+	prevLogIndex := uint64(0)
+	n.dispatcher.Dispatch(event{AppendEntries, &appendEntriesRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex, entries: []entry{entry{term: term}}}})
+	if !sentAppendEntriesResponse || !response.success {
+		t.Fatal("Should have sent a successful append entries response")
+	}
+}

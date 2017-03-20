@@ -584,44 +584,44 @@ func verifyIfTheNodeStepsDownIsRaisedWhenHigherTermIsDiscovered(n *node, t *test
 	}
 }
 
-func Test_when_the_node_receives_an_append_entry_with_a_term_less_than_its_own_it_rejects_it(t *testing.T) {
+func Test_when_the_node_receives_an_append_entries_with_a_term_less_than_its_own_it_rejects_it(t *testing.T) {
 	n := createNode()
 	n.boot()
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 		n.handleEvent(event)
 	}
-	sendAppendEntryResponseCalled := false
-	var gotAppendEntryResponse appendEntriesResponse
+	sendAppendEntriesResponseCalled := false
+	var gotAppendEntriesResponse appendEntriesResponse
 	n.transport.(*mockTransport).sendAppendEntriesResponseCb = func(sendToPeer peer, ar appendEntriesResponse) {
-		sendAppendEntryResponseCalled = true
-		gotAppendEntryResponse = ar
+		sendAppendEntriesResponseCalled = true
+		gotAppendEntriesResponse = ar
 	}
 	term := uint64(2)
 	n.store.StoreInt(CurrentTermKey, term)
 	n.dispatcher.Dispatch(event{AppendEntries, &appendEntriesRequest{from: peer{"peer1"}, term: (term - 1)}})
-	if !sendAppendEntryResponseCalled {
+	if !sendAppendEntriesResponseCalled {
 		t.Fatal("Should have called send append entry response")
 	}
-	if gotAppendEntryResponse.success {
+	if gotAppendEntriesResponse.success {
 		t.Fatal("Should have rejected the append entry response")
 	}
-	if gotAppendEntryResponse.term != term {
+	if gotAppendEntriesResponse.term != term {
 		t.Fatal("Should have set the response term to rejecting node's term")
 	}
 }
 
 // append entries, rule 2. Reply false if log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm (§5.3)
-func Test_when_the_node_receives_an_append_entry_and_the_entry_at_prev_log_indexs_does_not_match_the_prev_log_term_on_term_it_rejects_it(t *testing.T) {
+func Test_when_the_node_receives_an_append_entries_and_the_entry_at_prev_log_indexs_does_not_match_the_prev_log_term_on_term_it_rejects_it(t *testing.T) {
 	n := createNode()
 	n.boot()
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 		n.handleEvent(event)
 	}
-	sendAppendEntryResponseCalled := false
-	var gotAppendEntryResponse appendEntriesResponse
+	sendAppendEntriesResponseCalled := false
+	var gotAppendEntriesResponse appendEntriesResponse
 	n.transport.(*mockTransport).sendAppendEntriesResponseCb = func(sendToPeer peer, ar appendEntriesResponse) {
-		sendAppendEntryResponseCalled = true
-		gotAppendEntryResponse = ar
+		sendAppendEntriesResponseCalled = true
+		gotAppendEntriesResponse = ar
 	}
 	term := uint64(2)
 	n.store.StoreInt(CurrentTermKey, term)
@@ -633,13 +633,13 @@ func Test_when_the_node_receives_an_append_entry_and_the_entry_at_prev_log_index
 		return entryAtPrevLogIndex, true
 	}
 	n.dispatcher.Dispatch(event{AppendEntries, &appendEntriesRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex}})
-	if !sendAppendEntryResponseCalled {
+	if !sendAppendEntriesResponseCalled {
 		t.Fatal("Should have called send append entry response")
 	}
 	if indexPassed != prevLogIndex {
 		t.Fatal("Should have passed prevLogIndex: %d to check for entry at log", prevLogIndex)
 	}
-	if gotAppendEntryResponse.success {
+	if gotAppendEntriesResponse.success {
 		t.Fatal("Should have rejected the append entry response")
 	}
 
@@ -649,18 +649,18 @@ func Test_when_the_node_receives_an_append_entry_and_the_entry_at_prev_log_index
 		return entryAtPrevLogIndex, false
 	}
 	n.dispatcher.Dispatch(event{AppendEntries, &appendEntriesRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex}})
-	if !sendAppendEntryResponseCalled {
+	if !sendAppendEntriesResponseCalled {
 		t.Fatal("Should have called send append entry response")
 	}
 	if indexPassed != prevLogIndex {
 		t.Fatal("Should have passed prevLogIndex: %d to check for entry at log", prevLogIndex)
 	}
-	if gotAppendEntryResponse.success {
+	if gotAppendEntriesResponse.success {
 		t.Fatal("Should have rejected the append entry response as the test would have returned as no entry found at prevLogIndex")
 	}
 }
 
-func Test_when_there_is_a_mismatched_entry_in_log_append_entry_removes_it_and_those_that_follow_it(t *testing.T) {
+func Test_when_there_is_a_mismatched_entry_in_log_append_entries_removes_it_and_those_that_follow_it(t *testing.T) {
 	n := createNode()
 	n.boot()
 	entryTerm := uint64(2)
@@ -735,7 +735,7 @@ func Test_when_the_nodes_is_a_candidate_and_it_accepts_log_entries_from_the_new_
 	}
 }
 
-func Test_when_the_nodes_is_a_leader_and_it_gets_append_entry_from_another_leader_with_higher_term_it_steps_down(t *testing.T) {
+func Test_when_the_nodes_is_a_leader_and_it_gets_append_entries_from_another_leader_with_higher_term_it_steps_down(t *testing.T) {
 	n := createNode()
 	n.boot()
 	n.st.mode = Leader
@@ -759,7 +759,7 @@ func Test_when_the_nodes_is_a_leader_and_it_gets_append_entry_from_another_leade
 	}
 }
 
-func Test_when_the_nodes_is_a_follower_and_it_gets_append_entry_from_a_leader_with_higher_term_it_sets_its_own_term_to_higher_term(t *testing.T) {
+func Test_when_the_nodes_is_a_follower_and_it_gets_append_entries_from_a_leader_with_higher_term_it_sets_its_own_term_to_higher_term(t *testing.T) {
 	n := createNode()
 	n.boot()
 	n.log.(*mockLog).entryAtCb = func(logIndex uint64) (entry, bool) {
@@ -873,7 +873,7 @@ func Test_when_the_node_starts_as_leader_it_starts_heartbeat_timer(t *testing.T)
 	}
 }
 
-func Test_when_the_node_receives_heartbeat_timer_timedout_and_it_has_sent_append_entry_within_time_between_heartbeats_it_does_not_send_heartbeat(t *testing.T) {
+func Test_when_the_node_receives_heartbeat_timer_timedout_and_it_has_sent_append_entries_within_time_between_heartbeats_it_does_not_send_heartbeat(t *testing.T) {
 	n := createNamedNode("peer0")
 	n.whoArePeers = newMockWhoArePeers(func() []peer {
 		return []peer{}
@@ -898,7 +898,7 @@ func Test_when_the_node_receives_heartbeat_timer_timedout_and_it_has_sent_append
 	}
 }
 
-func Test_when_the_node_receives_heartbeat_timer_timedout_and_it_has_NOT_sent_append_entry_within_time_between_heartbeats_it_sends_heartbeat(t *testing.T) {
+func Test_when_the_node_receives_heartbeat_timer_timedout_and_it_has_NOT_sent_append_entries_within_time_between_heartbeats_it_sends_heartbeat(t *testing.T) {
 	n := createNamedNode("peer0")
 	n.whoArePeers = newMockWhoArePeers(func() []peer {
 		return []peer{}

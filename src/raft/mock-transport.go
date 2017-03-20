@@ -21,7 +21,7 @@ func (t *mockTransport) SendVoteResponse(sendToPeer peer, vr voteResponse) {
 	}
 }
 
-func (t *mockTransport) SendAppendEntryResponse(sendToPeer peer, ar appendEntriesResponse) {
+func (t *mockTransport) SendAppendEntriesResponse(sendToPeer peer, ar appendEntriesResponse) {
 	if t.sendAppendEntriesResponseCb != nil {
 		t.sendAppendEntriesResponseCb(sendToPeer, ar)
 		return

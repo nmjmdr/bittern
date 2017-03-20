@@ -223,7 +223,7 @@ func (n *node) appendEntries(evt event) {
 	request := evt.payload.(*appendEntriesRequest)
 	term := getCurrentTerm(n)
 	if request.term < term {
-		n.transport.SendAppendEntryResponse(request.from, appendEntriesResponse{false, term})
+		n.transport.SendAppendEntriesResponse(request.from, appendEntriesResponse{false, term})
 		return
 	}
 	// we heard from the leader here: all the other checks below are for log matching, think about this later!!!
@@ -238,7 +238,7 @@ func (n *node) appendEntries(evt event) {
 	// see if this code can be refactored - and remove the comment
 	entry, ok := n.log.EntryAt(request.prevLogIndex)
 	if ok && entry.term != request.prevLogTerm {
-		n.transport.SendAppendEntryResponse(request.from, appendEntriesResponse{false, term})
+		n.transport.SendAppendEntriesResponse(request.from, appendEntriesResponse{false, term})
 		return
 	}
 	n.appendToLog(request)

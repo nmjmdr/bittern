@@ -228,20 +228,22 @@ func (n *node) appendEntries(evt event) {
 	}
 	// we heard from the leader here: all the other checks below are for log matching, think about this later!!!
 	n.st.lastHeardFromALeader = n.time.UnixNow()
+	n.ifOkAppendToLog(request, term)
 	// Important note: Reference 2
 	if n.isHigherTerm(request.term) {
 		n.handleHigherTermReceived(request.term)
 	} else if n.st.mode == Candidate {
 		n.dispatcher.Dispatch(event{StartFollower, nil})
 	}
-	// we transition to follower and then continue to handle append entry request
-	// see if this code can be refactored - and remove the comment
-	// TO DO: How does this work if the node's log is empty?
-	// What is the first command passed as?
-	// Scenario: a node's log is empty, the leader sends an append entry with index that is further ahead
-	// The node rejects it, when does it start accepting the first entry?
+}
+func (n *node) ifOkAppendToLog(request *appendEntriesRequest, term uint64) {
 	entry, ok := n.log.EntryAt(request.prevLogIndex)
 	if ok && entry.term != request.prevLogTerm {
+		n.transport.SendAppendEntriesResponse(request.from, appendEntriesResponse{false, term})
+		return
+	} else if !ok && request.prevLogIndex != 0 {
+		// request.prevLogIndex != 0 ==> implies that the leader, when sending the first log entry at index 1
+		// sends prevLogIndex as 0
 		n.transport.SendAppendEntriesResponse(request.from, appendEntriesResponse{false, term})
 		return
 	}
@@ -266,6 +268,7 @@ func (n *node) startLeader(evt event) {
 	}
 	n.sendHeartbeat()
 	n.heartbeatTimer.Start(time.Duration(timeBetweenHeartbeats) * time.Millisecond)
+	// TO DO: sending heart beat on timer
 }
 
 func (n *node) heartbeatTimerTimedout(evt event) {
@@ -290,5 +293,4 @@ func (n *node) gotAppendEntriesResponse(evt event) {
 	// Look at this for understanding of commiting in the prescence of network partition: https://thesecretlivesofdata.com/raft/
 	// Especially: if a leader cannot commit to majority of the nodes, it should stay uncommitted
 	// Reference: point 5> in notes
-
 }

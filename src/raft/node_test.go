@@ -987,7 +987,7 @@ func Test_when_the_nodes_accepts_log_entries_from_a_leader_it_sends_a_successful
 	}
 	var response appendEntriesResponse
 	sentAppendEntriesResponse := false
-	n.transport.(*mockTransport).sendAppendEntriesResponseCb = func(to peer,ar appendEntriesResponse) {
+	n.transport.(*mockTransport).sendAppendEntriesResponseCb = func(to peer, ar appendEntriesResponse) {
 		sentAppendEntriesResponse = true
 		response = ar
 	}

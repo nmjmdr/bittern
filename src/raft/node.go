@@ -1,5 +1,7 @@
 package raft
 
+// TO DO:
+// If commitIndex > lastApplied: increment lastApplied, apply log[lastApplied] to state machine (§5.3)
 import (
 	"fmt"
 	"math/rand"
@@ -236,14 +238,14 @@ func (n *node) appendEntries(evt event) {
 		n.dispatcher.Dispatch(event{StartFollower, nil})
 	}
 }
+
 func (n *node) ifOkAppendToLog(request *appendEntriesRequest, term uint64) {
 	entry, ok := n.log.EntryAt(request.prevLogIndex)
 	if ok && entry.term != request.prevLogTerm {
 		n.transport.SendAppendEntriesResponse(request.from, appendEntriesResponse{false, term})
 		return
 	} else if !ok && request.prevLogIndex != 0 {
-		// request.prevLogIndex != 0 ==> implies that the leader, when sending the first log entry at index 1
-		// sends prevLogIndex as 0
+		// request.prevLogIndex == 0 ==> implies that the leader, when sending the first log entry at index 1 sends prevLogIndex = 0
 		n.transport.SendAppendEntriesResponse(request.from, appendEntriesResponse{false, term})
 		return
 	}
@@ -253,6 +255,7 @@ func (n *node) ifOkAppendToLog(request *appendEntriesRequest, term uint64) {
 	}
 	n.transport.SendAppendEntriesResponse(request.from, appendEntriesResponse{true, term})
 }
+
 func (n *node) sendHeartbeat() {
 	term := getCurrentTerm(n)
 	peers := n.whoArePeers.All()

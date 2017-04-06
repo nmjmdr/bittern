@@ -286,6 +286,18 @@ func (n *node) heartbeatTimerTimedout(evt event) {
 	n.heartbeatTimer.Start(time.Duration(timeBetweenHeartbeats) * time.Millisecond)
 }
 
+// might have to change this approach: to handle replication response:
+//https://groups.google.com/d/topic/raft-dev/M4BraEWG3TU/discussion
+/* Work in progress:
+Now given that my model of the node is driven by an event-loop and can handle only one event at a time, I can follow the below approach to perform log replication:
+
+1. Append the entry to its log
+2. Try and replicate the command by issuing append entries to all peers in parallel (taking into account the match-index and next-index for different peers)
+3. Wait for step 2 to come back with success (replicated across majority of peers. What happens when it cannot? Does the leader just hang?)
+4. Apply the command
+5. Return the response to the client.
+Is this ok?
+*/
 func (n *node) gotAppendEntriesResponse(evt event) {
 	appendEntriesResponse := evt.payload.(*appendEntriesResponse)
 	if appendEntriesResponse.success && n.st.mode == Leader {

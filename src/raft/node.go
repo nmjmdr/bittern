@@ -260,7 +260,7 @@ func (n *node) ifOkAppendToLog(request *appendEntriesRequest, term uint64) {
 	n.transport.SendAppendEntriesResponse(request.from, appendEntriesResponse{true, term})
 }
 
-func (n *node) sendHeartbeat() {
+func (n *node) sendAppendEntries() {
 	term := getCurrentTerm(n)
 	peers := n.whoArePeers.All()
 	for _, p := range peers {
@@ -275,7 +275,7 @@ func (n *node) startLeader(evt event) {
 	if n.st.mode != Leader {
 		panic("startLeader invoked when mode is not set as leader")
 	}
-	n.sendHeartbeat()
+	n.sendAppendEntries()
 	n.heartbeatTimer.Start(time.Duration(timeBetweenHeartbeats) * time.Millisecond)
 }
 
@@ -285,7 +285,7 @@ func (n *node) heartbeatTimerTimedout(evt event) {
 	}
 
 	if (n.time.UnixNow() - n.st.lastSentAppendEntriesAt) > timeBetweenHeartbeats {
-		n.sendHeartbeat()
+		n.sendAppendEntries()
 	}
 	n.heartbeatTimer.Start(time.Duration(timeBetweenHeartbeats) * time.Millisecond)
 }

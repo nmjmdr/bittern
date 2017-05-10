@@ -291,7 +291,15 @@ func (n *node) heartbeatTimerTimedout(evt event) {
 }
 
 func (n *node) gotCommand(evt event) {
-
+	if n.st.mode != Leader {
+		// not a leader, redirect to leader later
+		panic("Not a leader, received command. Method - yet to be implemented")
+		return
+	}
+	command := evt.payload.(string)
+	currentTerm := getCurrentTerm(n)
+	entry := entry{term: currentTerm, command: command}
+	n.log.Append(entry)
 }
 
 // might have to change this approach: to handle replication response:

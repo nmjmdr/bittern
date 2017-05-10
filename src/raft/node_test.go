@@ -998,3 +998,29 @@ func Test_when_the_nodes_accepts_log_entries_from_a_leader_it_sends_a_successful
 		t.Fatal("Should have sent a successful append entries response")
 	}
 }
+
+func Test_when_the_leader_receives_a_command_it_appends_it_to_its_log(t *testing.T) {
+	n := createNamedNode("peer0")
+	n.whoArePeers = newMockWhoArePeers(func() []peer {
+		return []peer{}
+	})
+	n.boot()
+	n.st.mode = Leader
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+
+	appendToLogInvoked := false
+	term := uint64(2)
+	command := "command"
+	n.store.StoreInt(CurrentTermKey, term)
+	var entryAppended entry
+	(n.log.(*mockLog)).appendCb = func(e entry) {
+		appendToLogInvoked = true
+		entryAppended = e
+	}
+	n.dispatcher.Dispatch(event{GotCommand,command})
+	if !appendToLogInvoked {
+		t.Fatal("Should have invoked append to log")
+	}
+}

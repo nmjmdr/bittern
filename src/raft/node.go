@@ -260,22 +260,34 @@ func (n *node) ifOkAppendToLog(request *appendEntriesRequest, term uint64) {
 	n.transport.SendAppendEntriesResponse(request.from, appendEntriesResponse{true, term})
 }
 
-func (n *node) sendAppendEntries() {
+func (n *node) sendAppendEntries(isHeartbeat bool) {
 	term := getCurrentTerm(n)
 	peers := n.whoArePeers.All()
 	for _, p := range peers {
-		n.transport.SendAppendEntriesRequest(p,
-			appendEntriesRequest{from: peer{n.id}, term: term, prevLogTerm: n.log.LastTerm(),
-				prevLogIndex: n.log.LastIndex(), entries: nil, leaderCommit: n.st.commitIndex})
+		entries := n.getEntriesToReplicate(p)
+
+		if entries == nil && isHeartbeat {
+			n.transport.SendAppendEntriesRequest(p,
+				appendEntriesRequest{from: peer{n.id}, term: term, prevLogTerm: n.log.LastTerm(),
+					prevLogIndex: n.log.LastIndex(), entries: nil, leaderCommit: n.st.commitIndex})
+		} else {
+			n.transport.SendAppendEntriesRequest(p,
+				appendEntriesRequest{from: peer{n.id}, term: term, prevLogTerm: n.log.LastTerm(),
+					prevLogIndex: n.log.LastIndex(), entries: entries, leaderCommit: n.st.commitIndex})
+		}
 		n.st.lastSentAppendEntriesAt = n.time.UnixNow()
 	}
+}
+
+func (n *node) getEntriesToReplicate(p peer) []entry {
+	return nil
 }
 
 func (n *node) startLeader(evt event) {
 	if n.st.mode != Leader {
 		panic("startLeader invoked when mode is not set as leader")
 	}
-	n.sendAppendEntries()
+	n.sendAppendEntries(true)
 	n.heartbeatTimer.Start(time.Duration(timeBetweenHeartbeats) * time.Millisecond)
 }
 
@@ -285,7 +297,7 @@ func (n *node) heartbeatTimerTimedout(evt event) {
 	}
 
 	if (n.time.UnixNow() - n.st.lastSentAppendEntriesAt) > timeBetweenHeartbeats {
-		n.sendAppendEntries()
+		n.sendAppendEntries(true)
 	}
 	n.heartbeatTimer.Start(time.Duration(timeBetweenHeartbeats) * time.Millisecond)
 }
@@ -300,6 +312,7 @@ func (n *node) gotCommand(evt event) {
 	currentTerm := getCurrentTerm(n)
 	entry := entry{term: currentTerm, command: command}
 	n.log.Append(entry)
+	n.sendAppendEntries(false)
 }
 
 // might have to change this approach: to handle replication response:

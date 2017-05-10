@@ -1024,3 +1024,5 @@ func Test_when_the_leader_receives_a_command_it_appends_it_to_its_log(t *testing
 		t.Fatal("Should have invoked append to log")
 	}
 }
+
+}

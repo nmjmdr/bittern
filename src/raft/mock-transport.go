@@ -2,7 +2,7 @@ package raft
 
 type SendVoteResponseCallbackFn func(sendToPeer peer, voteResponse voteResponse)
 type SendAppendEntriesResponseCallbackFn func(sendToPeer peer, ar appendEntriesResponse)
-type SendAppendEntriesRequestCallbackFn func(peer []peer, ar appendEntriesRequest)
+type SendAppendEntriesRequestCallbackFn func(peer peer, ar appendEntriesRequest)
 type mockTransport struct {
 	sendVoteResponseCb          SendVoteResponseCallbackFn
 	sendAppendEntriesResponseCb SendAppendEntriesResponseCallbackFn
@@ -28,9 +28,9 @@ func (t *mockTransport) SendAppendEntriesResponse(sendToPeer peer, ar appendEntr
 	}
 }
 
-func (t *mockTransport) SendAppendEntriesRequest(peers []peer, ar appendEntriesRequest) {
+func (t *mockTransport) SendAppendEntriesRequest(peer peer, ar appendEntriesRequest) {
 	if t.sendAppendEntriesRequestCb != nil {
-		t.sendAppendEntriesRequestCb(peers, ar)
+		t.sendAppendEntriesRequestCb(peer, ar)
 		return
 	}
 }

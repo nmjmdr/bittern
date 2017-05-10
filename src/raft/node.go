@@ -65,6 +65,8 @@ func (n *node) handleEvent(event event) {
 		n.heartbeatTimerTimedout(event)
 	case GotAppendEntriesResponse:
 		n.gotAppendEntriesResponse(event)
+	case GotCommand:
+		n.gotCommand(event)
 	default:
 		panic(fmt.Sprintf("Unknown event: %d passed to handleEvent", event.eventType))
 	}
@@ -103,6 +105,8 @@ func (n *node) electionTimerTimeout(evt event) {
 		n.st.mode = Candidate
 		n.dispatcher.Dispatch(event{StartCandidate, nil})
 	} else {
+		// The following will have to be changed to check if the leader
+		// is still able to reach majority of the nodes within an election time out
 		panic("Received election timer timedout while being a leader")
 	}
 }
@@ -259,10 +263,12 @@ func (n *node) ifOkAppendToLog(request *appendEntriesRequest, term uint64) {
 func (n *node) sendHeartbeat() {
 	term := getCurrentTerm(n)
 	peers := n.whoArePeers.All()
-	n.transport.SendAppendEntriesRequest(peers,
-		appendEntriesRequest{from: peer{n.id}, term: term, prevLogTerm: n.log.LastTerm(),
-			prevLogIndex: n.log.LastIndex(), entries: nil, leaderCommit: n.st.commitIndex})
-	n.st.lastSentAppendEntriesAt = n.time.UnixNow()
+	for _, p := range peers {
+		n.transport.SendAppendEntriesRequest(p,
+			appendEntriesRequest{from: peer{n.id}, term: term, prevLogTerm: n.log.LastTerm(),
+				prevLogIndex: n.log.LastIndex(), entries: nil, leaderCommit: n.st.commitIndex})
+		n.st.lastSentAppendEntriesAt = n.time.UnixNow()
+	}
 }
 
 func (n *node) startLeader(evt event) {
@@ -271,19 +277,21 @@ func (n *node) startLeader(evt event) {
 	}
 	n.sendHeartbeat()
 	n.heartbeatTimer.Start(time.Duration(timeBetweenHeartbeats) * time.Millisecond)
-	// TO DO: sending heart beat on timer
 }
 
 func (n *node) heartbeatTimerTimedout(evt event) {
 	if n.st.mode != Leader {
 		panic("Received heartbeat timer timedout when mode is not set as leader")
 	}
-	if (n.time.UnixNow() - n.st.lastSentAppendEntriesAt) < timeBetweenHeartbeats {
-		n.heartbeatTimer.Start(time.Duration(timeBetweenHeartbeats) * time.Millisecond)
-		return
+
+	if (n.time.UnixNow() - n.st.lastSentAppendEntriesAt) > timeBetweenHeartbeats {
+		n.sendHeartbeat()
 	}
-	n.sendHeartbeat()
 	n.heartbeatTimer.Start(time.Duration(timeBetweenHeartbeats) * time.Millisecond)
+}
+
+func (n *node) gotCommand(evt event) {
+
 }
 
 // might have to change this approach: to handle replication response:
@@ -307,5 +315,10 @@ func (n *node) gotAppendEntriesResponse(evt event) {
 	}
 	// Look at this for understanding of commiting in the prescence of network partition: https://thesecretlivesofdata.com/raft/
 	// Especially: if a leader cannot commit to majority of the nodes, it should stay uncommitted
-	// Reference: point 5> in notes
+	// Reference: point 5> in notes, the following rule ensures it:
+	// If there exists an N such that N > commitIndex, a majority of matchIndex[i] >= N and log[N].term == currentTerm:
+	// then set commitIndex = N
+	// Only start from the current commitIndex and then start checking the next one
+	// If a leader is not able to send heartbeat or append entry to majority of the nodes within an election timeout
+	// then it has to step down
 }

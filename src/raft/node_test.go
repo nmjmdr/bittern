@@ -841,9 +841,9 @@ func Test_when_the_node_starts_as_leader_it_sends_initial_heartbeat_to_all_nodes
 	}
 	sendAppendEntriesRequestCalled := false
 	var sentHeartbeatToPeers []peer
-	n.transport.(*mockTransport).sendAppendEntriesRequestCb = func(peers []peer, ar appendEntriesRequest) {
+	n.transport.(*mockTransport).sendAppendEntriesRequestCb = func(peer peer, ar appendEntriesRequest) {
 		sendAppendEntriesRequestCalled = true
-		sentHeartbeatToPeers = peers
+		sentHeartbeatToPeers = append(sentHeartbeatToPeers,peer)
 	}
 	n.dispatcher.Dispatch(event{StartLeader, nil})
 	if !sendAppendEntriesRequestCalled && len(sentHeartbeatToPeers) != len(n.whoArePeers.All()) {
@@ -860,7 +860,7 @@ func Test_when_the_node_starts_as_leader_it_starts_heartbeat_timer(t *testing.T)
 	n.heartbeatTimer.(*mockTimer).startCb = func(t time.Duration) {
 		heartbeatTimerStartCalled = true
 	}
-	n.transport.(*mockTransport).sendAppendEntriesRequestCb = func(peers []peer, ar appendEntriesRequest) {
+	n.transport.(*mockTransport).sendAppendEntriesRequestCb = func(p peer, ar appendEntriesRequest) {
 	}
 	n.boot()
 	n.st.mode = Leader
@@ -884,7 +884,7 @@ func Test_when_the_node_receives_heartbeat_timer_timedout_and_it_has_sent_append
 		n.handleEvent(event)
 	}
 	sendAppendEntriesRequestCalled := false
-	n.transport.(*mockTransport).sendAppendEntriesRequestCb = func(peers []peer, ar appendEntriesRequest) {
+	n.transport.(*mockTransport).sendAppendEntriesRequestCb = func(p peer, ar appendEntriesRequest) {
 		sendAppendEntriesRequestCalled = true
 	}
 	timeNow := int64(100)
@@ -901,7 +901,7 @@ func Test_when_the_node_receives_heartbeat_timer_timedout_and_it_has_sent_append
 func Test_when_the_node_receives_heartbeat_timer_timedout_and_it_has_NOT_sent_append_entries_within_time_between_heartbeats_it_sends_heartbeat(t *testing.T) {
 	n := createNamedNode("peer0")
 	n.whoArePeers = newMockWhoArePeers(func() []peer {
-		return []peer{}
+		return []peer{peer{"peer1"}}
 	})
 	n.boot()
 	n.st.mode = Leader
@@ -913,7 +913,7 @@ func Test_when_the_node_receives_heartbeat_timer_timedout_and_it_has_NOT_sent_ap
 		startTimerCalled = true
 	}
 	sendAppendEntriesRequestCalled := false
-	n.transport.(*mockTransport).sendAppendEntriesRequestCb = func(peers []peer, ar appendEntriesRequest) {
+	n.transport.(*mockTransport).sendAppendEntriesRequestCb = func(p peer, ar appendEntriesRequest) {
 		sendAppendEntriesRequestCalled = true
 	}
 	timeNow := int64(100)

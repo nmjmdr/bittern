@@ -12,6 +12,7 @@ const (
 	AppendEntries
 	HeartbeatTimerTimedout
 	GotAppendEntriesResponse
+	GotCommand
 )
 
 type event struct {

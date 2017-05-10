@@ -3,12 +3,15 @@ package raft
 type EntryAtCallbackFn func(index uint64) (entry, bool)
 type AddAtCallbackFn func(index uint64, entry entry)
 type DeleteFromCallbackFn func(index uint64)
+type AppendCallbackFn func(e entry)
+
 type mockLog struct {
 	lastLogIndex uint64
 	lastLogTerm  uint64
 	entryAtCb    EntryAtCallbackFn
 	addAtCb      AddAtCallbackFn
 	deleteFromCb DeleteFromCallbackFn
+	appendCb		AppendCallbackFn
 }
 
 func newMockLog(lastLogIndex uint64, lastLogTerm uint64) *mockLog {
@@ -39,6 +42,14 @@ func (m *mockLog) AddAt(index uint64, e entry) {
 		return
 	}
 }
+
+func (m *mockLog) Append(e entry) {
+	if m.appendCb != nil {
+		m.appendCb(e)
+		return
+	}
+}
+
 func (m *mockLog) DeleteFrom(index uint64) {
 	if m.deleteFromCb != nil {
 		m.deleteFromCb(index)

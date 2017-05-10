@@ -6,4 +6,5 @@ type Log interface {
 	EntryAt(index uint64) (entry, bool)
 	AddAt(index uint64, entry entry)
 	DeleteFrom(index uint64)
+	Append(entry entry)
 }

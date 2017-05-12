@@ -41,7 +41,10 @@ func (n *node) boot() {
 	n.st.mode = Follower
 	n.st.commitIndex = 0
 	n.st.lastApplied = 0
-
+	peers := n.whoArePeers.All()
+	n.st.matchIndex = make([]uint64,len(peers))
+	n.st.nextIndex = make([]uint64,len(peers))
+	//-- Follow the rules to initalize matchIndex and nextIndex here
 	n.dispatcher.Dispatch(event{StartFollower, nil})
 }
 

@@ -44,7 +44,6 @@ func (n *node) boot() {
 	peers := n.whoArePeers.All()
 	n.st.matchIndex = make([]uint64,len(peers))
 	n.st.nextIndex = make([]uint64,len(peers))
-	//-- Follow the rules to initalize matchIndex and nextIndex here
 	n.dispatcher.Dispatch(event{StartFollower, nil})
 }
 
@@ -286,10 +285,19 @@ func (n *node) getEntriesToReplicate(p peer) []entry {
 	return nil
 }
 
+func (n *node) initializeVolatileState() {
+	lastLogIndex := n.log.LastIndex()
+	for i :=0; i<len(n.st.matchIndex); i++ {
+		n.st.matchIndex[i] = 0
+		n.st.nextIndex[i] = lastLogIndex + 1
+	}
+}
+
 func (n *node) startLeader(evt event) {
 	if n.st.mode != Leader {
 		panic("startLeader invoked when mode is not set as leader")
 	}
+	n.initializeVolatileState()
 	n.sendAppendEntries(true)
 	n.heartbeatTimer.Start(time.Duration(timeBetweenHeartbeats) * time.Millisecond)
 }

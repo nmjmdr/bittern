@@ -34,7 +34,7 @@ matchIndex = nextIndex - 1, and simply not implement matchIndex. This is not saf
 While nextIndex and matchIndex are generally updated at the same time to a similar value (specifically, nextIndex = matchIndex + 1),
 the two serve quite different purposes. nextIndex is a guess as to what prefix the leader shares with a given follower.
 It is generally quite optimistic (we share everything), and is moved backwards only on negative responses.
-For example, when a leader has just been elected, nextIndex is set to be index index at the end of the log.
+For example, when a leader has just been elected, nextIndex is set to be index at the end of the log.
 In a way, nextIndex is used for performance – you only need to send these things to this peer.
 
 matchIndex is used for safety. It is a conservative measurement of what prefix of the log the

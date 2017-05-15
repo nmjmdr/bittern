@@ -4,6 +4,7 @@ type EntryAtCallbackFn func(index uint64) (entry, bool)
 type AddAtCallbackFn func(index uint64, entry entry)
 type DeleteFromCallbackFn func(index uint64)
 type AppendCallbackFn func(e entry)
+type GetCallbackFn func(startIndex uint64) []entry
 
 type mockLog struct {
 	lastLogIndex uint64
@@ -11,7 +12,8 @@ type mockLog struct {
 	entryAtCb    EntryAtCallbackFn
 	addAtCb      AddAtCallbackFn
 	deleteFromCb DeleteFromCallbackFn
-	appendCb		AppendCallbackFn
+	appendCb     AppendCallbackFn
+	getCb        GetCallbackFn
 }
 
 func newMockLog(lastLogIndex uint64, lastLogTerm uint64) *mockLog {
@@ -55,4 +57,11 @@ func (m *mockLog) DeleteFrom(index uint64) {
 		m.deleteFromCb(index)
 		return
 	}
+}
+
+func (m *mockLog) Get(startIndex uint64) []entry {
+	if m.getCb != nil {
+		return m.getCb(startIndex)
+	}
+	return nil
 }

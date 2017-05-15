@@ -41,9 +41,8 @@ func (n *node) boot() {
 	n.st.mode = Follower
 	n.st.commitIndex = 0
 	n.st.lastApplied = 0
-	peers := n.whoArePeers.All()
-	n.st.matchIndex = make([]uint64,len(peers))
-	n.st.nextIndex = make([]uint64,len(peers))
+	n.st.matchIndex = make(map[string]uint64)
+	n.st.nextIndex = make(map[string]uint64)
 	n.dispatcher.Dispatch(event{StartFollower, nil})
 }
 
@@ -268,7 +267,7 @@ func (n *node) sendAppendEntries(isHeartbeat bool) {
 	for _, p := range peers {
 		entries := n.getEntriesToReplicate(p)
 
-		if entries == nil && isHeartbeat {
+		if (entries == nil || len(entries) == 0) && isHeartbeat {
 			n.transport.SendAppendEntriesRequest(p,
 				appendEntriesRequest{from: peer{n.id}, term: term, prevLogTerm: n.log.LastTerm(),
 					prevLogIndex: n.log.LastIndex(), entries: nil, leaderCommit: n.st.commitIndex})
@@ -282,14 +281,17 @@ func (n *node) sendAppendEntries(isHeartbeat bool) {
 }
 
 func (n *node) getEntriesToReplicate(p peer) []entry {
-	return nil
+	nextIndex := n.st.nextIndex[p.id]
+	entries := n.log.Get(nextIndex)
+	return entries
 }
 
 func (n *node) initializeVolatileState() {
 	lastLogIndex := n.log.LastIndex()
-	for i :=0; i<len(n.st.matchIndex); i++ {
-		n.st.matchIndex[i] = 0
-		n.st.nextIndex[i] = lastLogIndex + 1
+	peers := n.whoArePeers.All()
+	for _, peer := range peers {
+		n.st.matchIndex[peer.id] = 0
+		n.st.nextIndex[peer.id] = lastLogIndex + 1
 	}
 }
 

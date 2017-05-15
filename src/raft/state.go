@@ -9,7 +9,7 @@ type state struct {
 	votesGot int
 
 	lastSentAppendEntriesAt int64
-	
-	nextIndex               []uint64
-	matchIndex              []uint64
+
+	nextIndex  map[string]uint64
+	matchIndex map[string]uint64
 }

@@ -843,7 +843,7 @@ func Test_when_the_node_starts_as_leader_it_sends_initial_heartbeat_to_all_nodes
 	var sentHeartbeatToPeers []peer
 	n.transport.(*mockTransport).sendAppendEntriesRequestCb = func(peer peer, ar appendEntriesRequest) {
 		sendAppendEntriesRequestCalled = true
-		sentHeartbeatToPeers = append(sentHeartbeatToPeers,peer)
+		sentHeartbeatToPeers = append(sentHeartbeatToPeers, peer)
 	}
 	n.dispatcher.Dispatch(event{StartLeader, nil})
 	if !sendAppendEntriesRequestCalled && len(sentHeartbeatToPeers) != len(n.whoArePeers.All()) {
@@ -1019,7 +1019,7 @@ func Test_when_the_leader_receives_a_command_it_appends_it_to_its_log(t *testing
 		appendToLogInvoked = true
 		entryAppended = e
 	}
-	n.dispatcher.Dispatch(event{GotCommand,command})
+	n.dispatcher.Dispatch(event{GotCommand, command})
 	if !appendToLogInvoked {
 		t.Fatal("Should have invoked append to log")
 	}
@@ -1028,7 +1028,7 @@ func Test_when_the_leader_receives_a_command_it_appends_it_to_its_log(t *testing
 func Test_when_the_leader_receives_a_command_it_sends_append_entries_for_replication(t *testing.T) {
 	n := createNamedNode("peer0")
 	toId := "peer1"
-	toPeer := peer{id:toId}
+	toPeer := peer{id: toId}
 	n.whoArePeers = newMockWhoArePeers(func() []peer {
 		return []peer{toPeer}
 	})
@@ -1040,17 +1040,22 @@ func Test_when_the_leader_receives_a_command_it_sends_append_entries_for_replica
 
 	term := uint64(2)
 	command := "command"
+
+	n.log.(*mockLog).getCb = func(startIndex uint64) []entry {
+		return []entry{entry{term: term, command: command}}
+	}
+
 	n.store.StoreInt(CurrentTermKey, term)
 	appendEntriesSent := false
 	commandReceived := ""
-	n.transport.(*mockTransport).sendAppendEntriesRequestCb = func(sentToPeer peer, ar appendEntriesRequest){
+	n.transport.(*mockTransport).sendAppendEntriesRequestCb = func(sentToPeer peer, ar appendEntriesRequest) {
 		appendEntriesSent = true
 		if ar.entries != nil && len(ar.entries) >= 1 {
 			commandReceived = ar.entries[0].command
 		}
 	}
 
-	n.dispatcher.Dispatch(event{GotCommand,command})
+	n.dispatcher.Dispatch(event{GotCommand, command})
 	if !appendEntriesSent || commandReceived != command {
 		t.Fatal("Should have sent the command  to other peer")
 	}

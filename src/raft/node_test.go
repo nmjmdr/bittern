@@ -1060,3 +1060,7 @@ func Test_when_the_leader_receives_a_command_it_sends_append_entries_for_replica
 		t.Fatal("Should have sent the command  to other peer")
 	}
 }
+
+func Test_when_the_starts_it_resets_the_next_index_and_match_index_maps(t *testing.T) {
+	t.Fatal("Code this")
+}

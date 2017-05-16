@@ -286,7 +286,7 @@ func (n *node) getEntriesToReplicate(p peer) []entry {
 	return entries
 }
 
-func (n *node) initializeVolatileState() {
+func (n *node) initializeVolatileLeaderState() {
 	lastLogIndex := n.log.LastIndex()
 	peers := n.whoArePeers.All()
 	for _, peer := range peers {
@@ -299,7 +299,7 @@ func (n *node) startLeader(evt event) {
 	if n.st.mode != Leader {
 		panic("startLeader invoked when mode is not set as leader")
 	}
-	n.initializeVolatileState()
+	n.initializeVolatileLeaderState()
 	n.sendAppendEntries(true)
 	n.heartbeatTimer.Start(time.Duration(timeBetweenHeartbeats) * time.Millisecond)
 }

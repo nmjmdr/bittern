@@ -1062,5 +1062,24 @@ func Test_when_the_leader_receives_a_command_it_sends_append_entries_for_replica
 }
 
 func Test_when_the_starts_it_resets_the_next_index_and_match_index_maps(t *testing.T) {
-	t.Fatal("Code this")
+	n := createNamedNode("peer0")
+	peerId := "peer1"
+	other := peer{id: peerId}
+	n.whoArePeers = newMockWhoArePeers(func() []peer {
+		return []peer{other}
+	})
+	n.boot()
+	n.st.mode = Leader
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	lastLogIndex := uint64(10)
+	n.log = newMockLog(lastLogIndex,2)
+	n.dispatcher.Dispatch(event{StartLeader, nil})
+	if n.st.nextIndex[other.id] != lastLogIndex + 1 {
+		t.Fatal("Should re-initialized next-index to last log index + 1")
+	}
+	if n.st.matchIndex[other.id] != 0 {
+		t.Fatal("Should re-initialized match-index to 0")
+	}
 }

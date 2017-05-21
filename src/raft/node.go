@@ -235,7 +235,8 @@ func (n *node) appendEntries(evt event) {
 	}
 	// we heard from the leader here: all the other checks below are for log matching, think about this later!!!
 	n.st.lastHeardFromALeader = n.time.UnixNow()
-	n.ifOkAppendToLog(request, term)
+	response := n.ifOkAppendToLog(request, term)
+	n.transport.SendAppendEntriesResponse(request.from, response)
 	// Important note: Reference 2
 	if n.isHigherTerm(request.term) {
 		n.handleHigherTermReceived(request.term)
@@ -244,21 +245,19 @@ func (n *node) appendEntries(evt event) {
 	}
 }
 
-func (n *node) ifOkAppendToLog(request *appendEntriesRequest, term uint64) {
+func (n *node) ifOkAppendToLog(request *appendEntriesRequest, term uint64) appendEntriesResponse {
 	entry, ok := n.log.EntryAt(request.prevLogIndex)
 	if ok && entry.term != request.prevLogTerm {
-		n.transport.SendAppendEntriesResponse(request.from, appendEntriesResponse{false, term})
-		return
+		return appendEntriesResponse{false, term}
 	} else if !ok && request.prevLogIndex != 0 {
 		// request.prevLogIndex == 0 ==> implies that the leader, when sending the first log entry at index 1 sends prevLogIndex = 0
-		n.transport.SendAppendEntriesResponse(request.from, appendEntriesResponse{false, term})
-		return
+		return appendEntriesResponse{false, term}
 	}
 	n.appendToLog(request)
 	if request.leaderCommit > n.st.commitIndex {
 		n.st.commitIndex = min(request.leaderCommit, n.log.LastIndex())
 	}
-	n.transport.SendAppendEntriesResponse(request.from, appendEntriesResponse{true, term})
+	return appendEntriesResponse{true, term}
 }
 
 func (n *node) sendAppendEntries(isHeartbeat bool) {

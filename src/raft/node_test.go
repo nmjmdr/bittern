@@ -1083,3 +1083,7 @@ func Test_when_the_starts_it_resets_the_next_index_and_match_index_maps(t *testi
 		t.Fatal("Should re-initialized match-index to 0")
 	}
 }
+
+func Test_when_the_leader_receives_a_failed_append_entries_response_when_the_peer_log_does_not_match_it_decrements_the_next_index_for_the_peer (t* testing.T) {
+	t.Fatal("to do")
+}

@@ -230,7 +230,7 @@ func (n *node) appendEntries(evt event) {
 	request := evt.payload.(*appendEntriesRequest)
 	term := getCurrentTerm(n)
 	if request.term < term {
-		n.transport.SendAppendEntriesResponse(request.from, appendEntriesResponse{false, term})
+		n.transport.SendAppendEntriesResponse(request.from, appendEntriesResponse{success: false, term: term, from: n.id})
 		return
 	}
 	// we heard from the leader here: all the other checks below are for log matching, think about this later!!!
@@ -248,16 +248,16 @@ func (n *node) appendEntries(evt event) {
 func (n *node) ifOkAppendToLog(request *appendEntriesRequest, term uint64) appendEntriesResponse {
 	entry, ok := n.log.EntryAt(request.prevLogIndex)
 	if ok && entry.term != request.prevLogTerm {
-		return appendEntriesResponse{false, term}
+		return appendEntriesResponse{success: false, term: term, from: n.id}
 	} else if !ok && request.prevLogIndex != 0 {
 		// request.prevLogIndex == 0 ==> implies that the leader, when sending the first log entry at index 1 sends prevLogIndex = 0
-		return appendEntriesResponse{false, term}
+		return appendEntriesResponse{success: false, term: term, from: n.id}
 	}
 	n.appendToLog(request)
 	if request.leaderCommit > n.st.commitIndex {
 		n.st.commitIndex = min(request.leaderCommit, n.log.LastIndex())
 	}
-	return appendEntriesResponse{true, term}
+	return appendEntriesResponse{success: true, term: term, from: n.id}
 }
 
 func (n *node) sendAppendEntries(isHeartbeat bool) {
@@ -329,11 +329,19 @@ func (n *node) gotCommand(evt event) {
 }
 
 func (n *node) gotAppendEntriesResponse(evt event) {
+	if n.st.mode != Leader {
+		// what is the ideal wy to handle this? does this situation occur?
+		return
+	}
 	appendEntriesResponse := evt.payload.(*appendEntriesResponse)
-	if appendEntriesResponse.success && n.st.mode == Leader {
+	if appendEntriesResponse.success {
 		//processAppendEntriesSucceeded()
 	} else if n.isHigherTerm(appendEntriesResponse.term) {
 		n.handleHigherTermReceived(appendEntriesResponse.term)
+	} else {
+		// we need to decrement the nextIndex and send append entries to the peer
+		peerId := appendEntriesResponse.from
+		n.st.nextIndex[peerId] = n.st.nextIndex[peerId] - 1
 	}
 	//Reference: Notes point 8
 }

@@ -1,7 +1,7 @@
 Notes:
 
 1>
-log is atleast as up-to-date as receiver’s log, grant vote
+log is at least as up-to-date as receiver’s log, grant vote
 Raft determines which of two logs is more up-to-date by comparing the index and term of
 the last entries in the logs. If the logs have last entries with different terms,
 then the log with the later term is more up-to-date. If the logs end with the same term,
@@ -42,3 +42,21 @@ leader shares with a given follower. matchIndex cannot ever be set to a value th
 as this may cause the commitIndex to be moved too far forward.
 This is why matchIndex is initialized to -1 (i.e., we agree on no prefix),
 and only updated when a follower positively acknowledges an AppendEntries RPC.
+
+7> DO have to incorporate the concept of outstanding requests: why?
+Let us assume we are yet to receive the response to first outstanding append entry request
+If we send another one: it would include the entries from previous request as well?
+For now: let us not complicate and follow a simple approach: we always send
+
+8> Look at this for understanding of commiting in the presence of network partition: https://thesecretlivesofdata.com/raft/
+Especially: if a leader cannot commit to majority of the nodes, it should stay uncommitted
+Reference: point 5> in notes, the following rule ensures it:
+  If there exists an N such that N > commitIndex, a majority of matchIndex[i] >= N and log[N].term == currentTerm:
+  then set commitIndex = N
+  Only start from the current commitIndex and then start checking the next one
+  If a leader is not able to send heartbeat or append entry to majority of the nodes within an election timeout
+  then it has to step down
+
+Links:
+https://groups.google.com/d/topic/raft-dev/M4BraEWG3TU/discussion
+https://thesquareplanet.com/blog/students-guide-to-raft/

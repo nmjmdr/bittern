@@ -272,6 +272,7 @@ func (n *node) sendAppendEntries(isHeartbeat bool) {
 				appendEntriesRequest{from: peer{n.id}, term: term, prevLogTerm: n.log.LastTerm(),
 					prevLogIndex: n.log.LastIndex(), entries: nil, leaderCommit: n.st.commitIndex})
 		} else {
+			//Reference: Notes: point 7
 			n.transport.SendAppendEntriesRequest(p,
 				appendEntriesRequest{from: peer{n.id}, term: term, prevLogTerm: n.log.LastTerm(),
 					prevLogIndex: n.log.LastIndex(), entries: entries, leaderCommit: n.st.commitIndex})
@@ -286,7 +287,7 @@ func (n *node) getEntriesToReplicate(p peer) []entry {
 	return entries
 }
 
-func (n *node) initializeVolatileLeaderState() {
+func (n *node) initializeLeaderState() {
 	lastLogIndex := n.log.LastIndex()
 	peers := n.whoArePeers.All()
 	for _, peer := range peers {
@@ -299,7 +300,7 @@ func (n *node) startLeader(evt event) {
 	if n.st.mode != Leader {
 		panic("startLeader invoked when mode is not set as leader")
 	}
-	n.initializeVolatileLeaderState()
+	n.initializeLeaderState()
 	n.sendAppendEntries(true)
 	n.heartbeatTimer.Start(time.Duration(timeBetweenHeartbeats) * time.Millisecond)
 }
@@ -328,31 +329,12 @@ func (n *node) gotCommand(evt event) {
 	n.sendAppendEntries(false)
 }
 
-// might have to change this approach: to handle replication response:
-//https://groups.google.com/d/topic/raft-dev/M4BraEWG3TU/discussion
-/* Work in progress:
-Now given that my model of the node is driven by an event-loop and can handle only one event at a time, I can follow the below approach to perform log replication:
-
-1. Append the entry to its log
-2. Try and replicate the command by issuing append entries to all peers in parallel (taking into account the match-index and next-index for different peers)
-3. Wait for step 2 to come back with success (replicated across majority of peers. What happens when it cannot? Does the leader just hang?)
-4. Apply the command
-5. Return the response to the client.
-Is this ok?
-*/
 func (n *node) gotAppendEntriesResponse(evt event) {
 	appendEntriesResponse := evt.payload.(*appendEntriesResponse)
 	if appendEntriesResponse.success && n.st.mode == Leader {
-		// process success response here
+		//processAppendEntriesSucceeded()
 	} else if n.isHigherTerm(appendEntriesResponse.term) {
 		n.handleHigherTermReceived(appendEntriesResponse.term)
 	}
-	// Look at this for understanding of commiting in the prescence of network partition: https://thesecretlivesofdata.com/raft/
-	// Especially: if a leader cannot commit to majority of the nodes, it should stay uncommitted
-	// Reference: point 5> in notes, the following rule ensures it:
-	// If there exists an N such that N > commitIndex, a majority of matchIndex[i] >= N and log[N].term == currentTerm:
-	// then set commitIndex = N
-	// Only start from the current commitIndex and then start checking the next one
-	// If a leader is not able to send heartbeat or append entry to majority of the nodes within an election timeout
-	// then it has to step down
+	//Reference: Notes point 8
 }

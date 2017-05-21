@@ -1074,9 +1074,9 @@ func Test_when_the_starts_it_resets_the_next_index_and_match_index_maps(t *testi
 		n.handleEvent(event)
 	}
 	lastLogIndex := uint64(10)
-	n.log = newMockLog(lastLogIndex,2)
+	n.log = newMockLog(lastLogIndex, 2)
 	n.dispatcher.Dispatch(event{StartLeader, nil})
-	if n.st.nextIndex[other.id] != lastLogIndex + 1 {
+	if n.st.nextIndex[other.id] != lastLogIndex+1 {
 		t.Fatal("Should re-initialized next-index to last log index + 1")
 	}
 	if n.st.matchIndex[other.id] != 0 {

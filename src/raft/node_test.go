@@ -1061,7 +1061,7 @@ func Test_when_the_leader_receives_a_command_it_sends_append_entries_for_replica
 	}
 }
 
-func Test_when_the_starts_it_resets_the_next_index_and_match_index_maps(t *testing.T) {
+func Test_when_the_leader_starts_it_resets_the_next_index_and_match_index_maps(t *testing.T) {
 	n := createNamedNode("peer0")
 	peerId := "peer1"
 	other := peer{id: peerId}
@@ -1085,5 +1085,25 @@ func Test_when_the_starts_it_resets_the_next_index_and_match_index_maps(t *testi
 }
 
 func Test_when_the_leader_receives_a_failed_append_entries_response_when_the_peer_log_does_not_match_it_decrements_the_next_index_for_the_peer (t* testing.T) {
-	t.Fatal("to do")
+	n := createNamedNode("peer0")
+	peerId := "peer1"
+	other := peer{id: peerId}
+	n.whoArePeers = newMockWhoArePeers(func() []peer {
+		return []peer{other}
+	})
+	n.boot()
+	n.st.mode = Leader
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	lastLogIndex := uint64(10)
+	n.log = newMockLog(lastLogIndex, 2)
+	n.dispatcher.Dispatch(event{StartLeader, nil})
+	term := getCurrentTerm(n)
+	nextIndexForPeer := uint64(10)
+	n.st.nextIndex[peerId] = nextIndexForPeer
+	n.dispatcher.Dispatch(event{GotAppendEntriesResponse,&appendEntriesResponse{success:false, term: term, from: peerId}})
+	if n.st.nextIndex[peerId] != (nextIndexForPeer - 1) {
+		t.Fatal("Should have decremented the next index for the peer")
+	}
 }

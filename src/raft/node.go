@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"time"
+	"log"
 )
 
 const CurrentTermKey = "current-term"
@@ -341,7 +342,12 @@ func (n *node) gotAppendEntriesResponse(evt event) {
 	} else {
 		// we need to decrement the nextIndex and send append entries to the peer
 		peerId := appendEntriesResponse.from
-		n.st.nextIndex[peerId] = n.st.nextIndex[peerId] - 1
+		value, ok := n.st.nextIndex[peerId]
+		if ok {
+			n.st.nextIndex[peerId] = value - 1
+		} else {
+			log.Print("Unknown peer")
+		}
 	}
 	//Reference: Notes point 8
 }

@@ -70,7 +70,7 @@ func (n *node) handleEvent(event event) {
 	case GotCommand:
 		n.gotCommand(event)
 	default:
-		panic(fmt.Sprintf("Unknown event: %d passed to handleEvent", event.eventType))
+		log.Panic(fmt.Sprintf("Unknown event: %d passed to handleEvent", event.eventType))
 	}
 }
 
@@ -86,7 +86,7 @@ func (n *node) restartElectionTimer() {
 
 func (n *node) startFollower(evt event) {
 	if n.st.mode != Follower {
-		panic("Mode is not set to follower in startFollower")
+		log.Panic("Mode is not set to follower in startFollower")
 	}
 	n.startElectionTimer()
 }
@@ -109,13 +109,13 @@ func (n *node) electionTimerTimeout(evt event) {
 	} else {
 		// The following will have to be changed to check if the leader
 		// is still able to reach majority of the nodes within an election time out
-		panic("Received election timer timedout while being a leader")
+		log.Panic("Received election timer timedout while being a leader")
 	}
 }
 
 func (n *node) startCandidate(event event) {
 	if n.st.mode != Candidate {
-		panic("Mode is not set to candidate in startCandidate")
+		log.Panic("Mode is not set to candidate in startCandidate")
 	}
 	term := getCurrentTerm(n)
 	term = term + 1
@@ -298,7 +298,7 @@ func (n *node) initializeLeaderState() {
 
 func (n *node) startLeader(evt event) {
 	if n.st.mode != Leader {
-		panic("startLeader invoked when mode is not set as leader")
+		log.Panic("startLeader invoked when mode is not set as leader")
 	}
 	n.initializeLeaderState()
 	n.sendAppendEntries(true)
@@ -307,7 +307,7 @@ func (n *node) startLeader(evt event) {
 
 func (n *node) heartbeatTimerTimedout(evt event) {
 	if n.st.mode != Leader {
-		panic("Received heartbeat timer timedout when mode is not set as leader")
+		log.Panic("Received heartbeat timer timedout when mode is not set as leader")
 	}
 
 	if (n.time.UnixNow() - n.st.lastSentAppendEntriesAt) > timeBetweenHeartbeats {
@@ -319,7 +319,7 @@ func (n *node) heartbeatTimerTimedout(evt event) {
 func (n *node) gotCommand(evt event) {
 	if n.st.mode != Leader {
 		// not a leader, redirect to leader later
-		panic("Not a leader, received command. Method - yet to be implemented")
+		log.Panic("Not a leader, received command. Method - yet to be implemented")
 		return
 	}
 	command := evt.payload.(string)
@@ -331,7 +331,7 @@ func (n *node) gotCommand(evt event) {
 
 func (n *node) gotAppendEntriesResponse(evt event) {
 	if n.st.mode != Leader {
-		// what is the ideal wy to handle this? does this situation occur?
+		// what is the ideal way to handle this? does this situation occur?
 		return
 	}
 	appendEntriesResponse := evt.payload.(*appendEntriesResponse)

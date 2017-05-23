@@ -4,9 +4,9 @@ package raft
 // If commitIndex > lastApplied: increment lastApplied, apply log[lastApplied] to state machine (§5.3)
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"time"
-	"log"
 )
 
 const CurrentTermKey = "current-term"
@@ -329,19 +329,23 @@ func (n *node) gotCommand(evt event) {
 	n.sendAppendEntries(false)
 }
 
+func onAppendEntriesSucceeded(response *appendEntriesResponse) {
+	log.Panic("Implement this!")
+}
+
 func (n *node) gotAppendEntriesResponse(evt event) {
 	if n.st.mode != Leader {
 		// what is the ideal way to handle this? does this situation occur?
 		return
 	}
-	appendEntriesResponse := evt.payload.(*appendEntriesResponse)
-	if appendEntriesResponse.success {
-		//processAppendEntriesSucceeded()
-	} else if n.isHigherTerm(appendEntriesResponse.term) {
-		n.handleHigherTermReceived(appendEntriesResponse.term)
+	response := evt.payload.(*appendEntriesResponse)
+	if response.success {
+		onAppendEntriesSucceeded(response)
+	} else if n.isHigherTerm(response.term) {
+		n.handleHigherTermReceived(response.term)
 	} else {
 		// we need to decrement the nextIndex and send append entries to the peer
-		peerId := appendEntriesResponse.from
+		peerId := response.from
 		value, ok := n.st.nextIndex[peerId]
 		if ok {
 			n.st.nextIndex[peerId] = value - 1

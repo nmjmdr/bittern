@@ -26,6 +26,11 @@ func createNamedNode(id string) *node {
 	return n
 }
 
+func makeNodeLeader(n *node) {
+	n.st.mode = Leader
+	n.dispatcher.Dispatch(event{StartLeader, nil})
+}
+
 func createNode() *node {
 	return createNamedNode("peer0")
 }
@@ -563,7 +568,6 @@ func Test_when_the_node_is_candiate_and_it_gets_a_request_for_vote_with_higher_t
 func Test_when_the_node_is_Leader_and_it_gets_a_request_for_vote_with_higher_term_it_steps_down(t *testing.T) {
 	n := createNode()
 	n.boot()
-	n.st.mode = Leader
 	verifyIfTheNodeStepsDownIsRaisedWhenHigherTermIsDiscovered(n, t)
 }
 
@@ -578,6 +582,7 @@ func verifyIfTheNodeStepsDownIsRaisedWhenHigherTermIsDiscovered(n *node, t *test
 	term := uint64(1)
 	n.store.StoreInt(CurrentTermKey, term)
 	higherTerm := term + 1
+	makeNodeLeader(n)
 	n.dispatcher.Dispatch(event{GotRequestForVote, &voteRequest{from: peer{"some-peer"}, term: higherTerm}})
 	if !stepDownRaised {
 		t.Fatal("Should have raised step down event")
@@ -738,7 +743,6 @@ func Test_when_the_nodes_is_a_candidate_and_it_accepts_log_entries_from_the_new_
 func Test_when_the_nodes_is_a_leader_and_it_gets_append_entries_from_another_leader_with_higher_term_it_steps_down(t *testing.T) {
 	n := createNode()
 	n.boot()
-	n.st.mode = Leader
 	n.log.(*mockLog).entryAtCb = func(logIndex uint64) (entry, bool) {
 		return entry{}, false
 	}
@@ -750,6 +754,7 @@ func Test_when_the_nodes_is_a_leader_and_it_gets_append_entries_from_another_lea
 			n.handleEvent(event)
 		}
 	}
+	makeNodeLeader(n)
 	term := getCurrentTerm(n)
 	higherTerm := term + 1
 	prevLogIndex := uint64(0)
@@ -835,7 +840,6 @@ func Test_when_the_node_starts_as_leader_it_sends_initial_heartbeat_to_all_nodes
 		return []peer{peer{"peer1"}, peer{"peer2"}}
 	})
 	n.boot()
-	n.st.mode = Leader
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 		n.handleEvent(event)
 	}
@@ -845,7 +849,7 @@ func Test_when_the_node_starts_as_leader_it_sends_initial_heartbeat_to_all_nodes
 		sendAppendEntriesRequestCalled = true
 		sentHeartbeatToPeers = append(sentHeartbeatToPeers, peer)
 	}
-	n.dispatcher.Dispatch(event{StartLeader, nil})
+	makeNodeLeader(n)
 	if !sendAppendEntriesRequestCalled && len(sentHeartbeatToPeers) != len(n.whoArePeers.All()) {
 		t.Fatal("Should have sent append entires to all peers")
 	}
@@ -863,23 +867,21 @@ func Test_when_the_node_starts_as_leader_it_starts_heartbeat_timer(t *testing.T)
 	n.transport.(*mockTransport).sendAppendEntriesRequestCb = func(p peer, ar appendEntriesRequest) {
 	}
 	n.boot()
-	n.st.mode = Leader
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 		n.handleEvent(event)
 	}
-	n.dispatcher.Dispatch(event{StartLeader, nil})
+	makeNodeLeader(n)
 	if !heartbeatTimerStartCalled {
 		t.Fatal("Should have called heartbear timer start")
 	}
 }
 
-func Test_when_the_node_receives_heartbeat_timer_timedout_and_it_has_sent_append_entries_within_time_between_heartbeats_it_does_not_send_heartbeat(t *testing.T) {
+func Test_when_the_leader_receives_heartbeat_timer_timedout_and_it_has_sent_append_entries_within_time_between_heartbeats_it_does_not_send_heartbeat(t *testing.T) {
 	n := createNamedNode("peer0")
 	n.whoArePeers = newMockWhoArePeers(func() []peer {
 		return []peer{}
 	})
 	n.boot()
-	n.st.mode = Leader
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 		n.handleEvent(event)
 	}
@@ -892,19 +894,19 @@ func Test_when_the_node_receives_heartbeat_timer_timedout_and_it_has_sent_append
 		return timeNow
 	})
 	n.st.lastSentAppendEntriesAt = (timeNow - timeBetweenHeartbeats + 10)
+	makeNodeLeader(n)
 	n.dispatcher.Dispatch(event{HeartbeatTimerTimedout, nil})
 	if sendAppendEntriesRequestCalled {
 		t.Fatal("Should NOT have sent heartbeat")
 	}
 }
 
-func Test_when_the_node_receives_heartbeat_timer_timedout_and_it_has_NOT_sent_append_entries_within_time_between_heartbeats_it_sends_heartbeat(t *testing.T) {
+func Test_when_the_leader_receives_heartbeat_timer_timedout_and_it_has_NOT_sent_append_entries_within_time_between_heartbeats_it_sends_heartbeat(t *testing.T) {
 	n := createNamedNode("peer0")
 	n.whoArePeers = newMockWhoArePeers(func() []peer {
 		return []peer{peer{"peer1"}}
 	})
 	n.boot()
-	n.st.mode = Leader
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 		n.handleEvent(event)
 	}
@@ -921,19 +923,19 @@ func Test_when_the_node_receives_heartbeat_timer_timedout_and_it_has_NOT_sent_ap
 		return timeNow
 	})
 	n.st.lastSentAppendEntriesAt = (timeNow - timeBetweenHeartbeats - 10)
+	makeNodeLeader(n)
 	n.dispatcher.Dispatch(event{HeartbeatTimerTimedout, nil})
 	if !sendAppendEntriesRequestCalled {
 		t.Fatal("Should have sent heartbeat")
 	}
 }
 
-func Test_when_the_node_receives_heartbeat_timer_timedout_it_restarts_the_heartbeat_timer(t *testing.T) {
+func Test_when_the_leader_receives_heartbeat_timer_timedout_it_restarts_the_heartbeat_timer(t *testing.T) {
 	n := createNamedNode("peer0")
 	n.whoArePeers = newMockWhoArePeers(func() []peer {
 		return []peer{}
 	})
 	n.boot()
-	n.st.mode = Leader
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 		n.handleEvent(event)
 	}
@@ -941,6 +943,7 @@ func Test_when_the_node_receives_heartbeat_timer_timedout_it_restarts_the_heartb
 	n.heartbeatTimer.(*mockTimer).startCb = func(t time.Duration) {
 		startTimerCalled = true
 	}
+	makeNodeLeader(n)
 	n.dispatcher.Dispatch(event{HeartbeatTimerTimedout, nil})
 	if !startTimerCalled {
 		t.Fatal("Should have called start timer for heartbeat timer")
@@ -953,7 +956,6 @@ func Test_when_the_leader_receives_append_entries_response_it_steps_down_if_it_d
 		return []peer{}
 	})
 	n.boot()
-	n.st.mode = Leader
 	steppedDown := false
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 		if event.eventType == StartFollower {
@@ -964,6 +966,7 @@ func Test_when_the_leader_receives_append_entries_response_it_steps_down_if_it_d
 	}
 	term := uint64(2)
 	n.store.StoreInt(CurrentTermKey, term)
+	makeNodeLeader(n)
 	n.dispatcher.Dispatch(event{GotAppendEntriesResponse, &appendEntriesResponse{success: false, term: (term + 1)}})
 	if !steppedDown {
 		t.Fatal("Should have raised the step down event")
@@ -1005,7 +1008,6 @@ func Test_when_the_leader_receives_a_command_it_appends_it_to_its_log(t *testing
 		return []peer{}
 	})
 	n.boot()
-	n.st.mode = Leader
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 		n.handleEvent(event)
 	}
@@ -1019,6 +1021,7 @@ func Test_when_the_leader_receives_a_command_it_appends_it_to_its_log(t *testing
 		appendToLogInvoked = true
 		entryAppended = e
 	}
+	makeNodeLeader(n)
 	n.dispatcher.Dispatch(event{GotCommand, command})
 	if !appendToLogInvoked {
 		t.Fatal("Should have invoked append to log")
@@ -1033,7 +1036,6 @@ func Test_when_the_leader_receives_a_command_it_sends_append_entries_for_replica
 		return []peer{toPeer}
 	})
 	n.boot()
-	n.st.mode = Leader
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 		n.handleEvent(event)
 	}
@@ -1046,6 +1048,7 @@ func Test_when_the_leader_receives_a_command_it_sends_append_entries_for_replica
 	}
 
 	n.store.StoreInt(CurrentTermKey, term)
+	makeNodeLeader(n)
 	appendEntriesSent := false
 	commandReceived := ""
 	n.transport.(*mockTransport).sendAppendEntriesRequestCb = func(sentToPeer peer, ar appendEntriesRequest) {
@@ -1069,13 +1072,12 @@ func Test_when_the_leader_starts_it_resets_the_next_index_and_match_index_maps(t
 		return []peer{other}
 	})
 	n.boot()
-	n.st.mode = Leader
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 		n.handleEvent(event)
 	}
 	lastLogIndex := uint64(10)
 	n.log = newMockLog(lastLogIndex, 2)
-	n.dispatcher.Dispatch(event{StartLeader, nil})
+	makeNodeLeader(n)
 	if n.st.nextIndex[other.id] != lastLogIndex+1 {
 		t.Fatal("Should re-initialized next-index to last log index + 1")
 	}
@@ -1084,7 +1086,7 @@ func Test_when_the_leader_starts_it_resets_the_next_index_and_match_index_maps(t
 	}
 }
 
-func Test_when_the_leader_receives_a_failed_append_entries_response_when_the_peer_log_does_not_match_it_decrements_the_next_index_for_the_peer (t* testing.T) {
+func Test_when_the_leader_receives_a_failed_append_entries_response_when_the_peer_log_does_not_match_it_decrements_the_next_index_for_the_peer(t *testing.T) {
 	n := createNamedNode("peer0")
 	peerId := "peer1"
 	other := peer{id: peerId}
@@ -1092,17 +1094,16 @@ func Test_when_the_leader_receives_a_failed_append_entries_response_when_the_pee
 		return []peer{other}
 	})
 	n.boot()
-	n.st.mode = Leader
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
 		n.handleEvent(event)
 	}
 	lastLogIndex := uint64(10)
 	n.log = newMockLog(lastLogIndex, 2)
-	n.dispatcher.Dispatch(event{StartLeader, nil})
+	makeNodeLeader(n)
 	term := getCurrentTerm(n)
 	nextIndexForPeer := uint64(10)
 	n.st.nextIndex[peerId] = nextIndexForPeer
-	n.dispatcher.Dispatch(event{GotAppendEntriesResponse,&appendEntriesResponse{success:false, term: term, from: peerId}})
+	n.dispatcher.Dispatch(event{GotAppendEntriesResponse, &appendEntriesResponse{success: false, term: term, from: peerId}})
 	if n.st.nextIndex[peerId] != (nextIndexForPeer - 1) {
 		t.Fatal("Should have decremented the next index for the peer")
 	}

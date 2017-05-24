@@ -1064,6 +1064,52 @@ func Test_when_the_leader_receives_a_command_it_sends_append_entries_for_replica
 	}
 }
 
+func Test_when_the_leader_receives_a_command_it_sends_entries_from_next_index_to_last_index_replicate(t *testing.T) {
+	n := createNamedNode("peer0")
+	toId := "peer1"
+	toPeer := peer{id: toId}
+	n.whoArePeers = newMockWhoArePeers(func() []peer {
+		return []peer{toPeer}
+	})
+	n.boot()
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+
+	term := uint64(2)
+	command := "command"
+	var entries []entry
+	numberOfEntries := uint64(10)
+	for i := uint64(0); i < numberOfEntries; i++ {
+		entries = append(entries, entry{term: term, command: command})
+	}
+	n.log = newMockLog(numberOfEntries, term)
+	var startIndexPassed uint64
+	n.log.(*mockLog).getCb = func(startIndex uint64) []entry {
+		startIndexPassed = startIndex
+		return entries
+	}
+
+	n.store.StoreInt(CurrentTermKey, term)
+	replicatedUntil := uint64(5)
+	n.st.nextIndex[toId] = replicatedUntil
+	t.Fatal("make the peer reject until replicatedUntil")
+
+	makeNodeLeader(n)
+	appendEntriesSent := false
+	var entriesReceived []entry
+	n.transport.(*mockTransport).sendAppendEntriesRequestCb = func(sentToPeer peer, ar appendEntriesRequest) {
+		appendEntriesSent = true
+		entriesReceived = ar.entries
+	}
+
+	n.dispatcher.Dispatch(event{GotCommand, command})
+	t.Log(startIndexPassed)
+	if !appendEntriesSent {
+		t.Fatal("Should have sent the command  to other peer")
+	}
+}
+
 func Test_when_the_leader_starts_it_resets_the_next_index_and_match_index_maps(t *testing.T) {
 	n := createNamedNode("peer0")
 	peerId := "peer1"

@@ -266,7 +266,6 @@ func (n *node) sendAppendEntries(isHeartbeat bool) {
 	peers := n.whoArePeers.All()
 	for _, p := range peers {
 		entries := n.getEntriesToReplicate(p)
-
 		if (entries == nil || len(entries) == 0) && isHeartbeat {
 			n.transport.SendAppendEntriesRequest(p,
 				appendEntriesRequest{from: peer{n.id}, term: term, prevLogTerm: n.log.LastTerm(),
@@ -282,7 +281,12 @@ func (n *node) sendAppendEntries(isHeartbeat bool) {
 }
 
 func (n *node) getEntriesToReplicate(p peer) []entry {
-	nextIndex := n.st.nextIndex[p.id]
+	nextIndex, ok := n.st.nextIndex[p.id]
+	if !ok {
+		log.Print("Unknown peer index passed")
+		return nil
+	}
+	log.Print("In Node: ", n.st.nextIndex)
 	entries := n.log.Get(nextIndex)
 	return entries
 }

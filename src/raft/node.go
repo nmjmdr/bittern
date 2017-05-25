@@ -286,7 +286,6 @@ func (n *node) getEntriesToReplicate(p peer) []entry {
 		log.Print("Unknown peer index passed")
 		return nil
 	}
-	log.Print("In Node: ", n.st.nextIndex)
 	entries := n.log.Get(nextIndex)
 	return entries
 }

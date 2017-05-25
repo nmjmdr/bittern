@@ -1110,15 +1110,16 @@ func Test_when_the_leader_receives_a_failed_append_entries_response_when_the_pee
 	}
 }
 
-func Test_this(t *testing.T) {
+func Test_leader_sends_all_commands_in_range_from_next_index_to_last_log_index_to_peers(t *testing.T) {
 	n := createNamedNode("peer0")
 	peerId := "peer1"
 	other := peer{id: peerId}
 	n.whoArePeers = newMockWhoArePeers(func() []peer {
 		return []peer{other}
 	})
+	var entries []entry
 	n.transport.(*mockTransport).sendAppendEntriesRequestCb = func(p peer, ar appendEntriesRequest) {
-		t.Log(p, ar)
+		entries = ar.entries
 	}
 	n.boot()
 	n.dispatcher.(*mockDispatcher).callback = func(event event) {
@@ -1130,8 +1131,19 @@ func Test_this(t *testing.T) {
 	// now the leader receives three commands
 	command := "command"
 	numberOfCommands := 3
+	var commands []string
 	for i := 0; i < numberOfCommands; i++ {
-		n.dispatcher.Dispatch(event{GotCommand, command + strconv.Itoa(i)})
+		commands = append(commands, command + strconv.Itoa(i))
+		n.dispatcher.Dispatch(event{GotCommand, commands[i] })
 	}
-
+	if len(entries) != numberOfCommands {
+		t.Fatal("Should have sent all the commands to peer")
+	}
+	var index = 0
+	for _,e := range entries {
+		if e.command != commands[index] {
+			t.Fatal("Should have recieved the command")
+		}
+		index++
+	}
 }

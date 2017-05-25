@@ -55,8 +55,11 @@ func (i *inMemoryLog) Append(entry entry) {
 }
 
 func (i *inMemoryLog) Get(startIndex uint64) []entry {
-	if startIndex <= 0 || startIndex > uint64(len(i.buffer)-1) || len(i.buffer) == 1 {
+
+	if startIndex <= 0 || startIndex > uint64(len(i.buffer)) {
 		panic("Index out of bounds of in-memory-log")
-	}
+	} else if len(i.buffer) == 1 {
+    return nil
+  }
 	return i.buffer[startIndex:]
 }

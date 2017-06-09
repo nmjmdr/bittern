@@ -255,10 +255,11 @@ func (n *node) ifOkAppendToLog(request *appendEntriesRequest, term uint64) appen
 		return appendEntriesResponse{success: false, term: term, from: n.id}
 	}
 	n.appendToLog(request)
+	lastLogIndex := n.log.LastIndex()
 	if request.leaderCommit > n.st.commitIndex {
-		n.st.commitIndex = min(request.leaderCommit, n.log.LastIndex())
+		n.st.commitIndex = min(request.leaderCommit, lastLogIndex)
 	}
-	return appendEntriesResponse{success: true, term: term, from: n.id}
+	return appendEntriesResponse{success: true, term: term, from: n.id, lastLogIndex: lastLogIndex}
 }
 
 func (n *node) sendAppendEntries(isHeartbeat bool) {
@@ -322,7 +323,7 @@ func (n *node) heartbeatTimerTimedout(evt event) {
 func (n *node) gotCommand(evt event) {
 	if n.st.mode != Leader {
 		// not a leader, redirect to leader later
-		log.Panic("Not a leader, received command. Method - yet to be implemented")
+		log.Panic("Not a leader, received command. Method - yet to be implemented (of redirecting to right leader)")
 		return
 	}
 	command := evt.payload.(string)
@@ -332,18 +333,24 @@ func (n *node) gotCommand(evt event) {
 	n.sendAppendEntries(false)
 }
 
-func onAppendEntriesSucceeded(response *appendEntriesResponse) {
-	log.Panic("Implement this!")
+func (n* node)onAppendEntriesSucceeded(response *appendEntriesResponse) {
+		_, ok := n.st.nextIndex[response.from]
+		if !ok {
+			log.Panic("Uknonw peer id passed")
+		}
+		//n.st.nextIndex[response.from] = n.st.nextIndex
+		panic("Implement this")
 }
 
 func (n *node) gotAppendEntriesResponse(evt event) {
 	if n.st.mode != Leader {
 		// what is the ideal way to handle this? does this situation occur?
+		log.Print("Got append entries response when the node was not a leader, an observation (for now)")
 		return
 	}
 	response := evt.payload.(*appendEntriesResponse)
 	if response.success {
-		onAppendEntriesSucceeded(response)
+		//n.onAppendEntriesSucceeded(response)
 	} else if n.isHigherTerm(response.term) {
 		n.handleHigherTermReceived(response.term)
 	} else {

@@ -1126,9 +1126,7 @@ func Test_leader_sends_all_commands_in_range_from_next_index_to_last_log_index_t
 		n.handleEvent(event)
 	}
 	n.log = newInmemoryLog()
-
 	makeNodeLeader(n)
-	// now the leader receives three commands
 	command := "command"
 	numberOfCommands := 3
 	var commands []string
@@ -1146,4 +1144,19 @@ func Test_leader_sends_all_commands_in_range_from_next_index_to_last_log_index_t
 		}
 		index++
 	}
+}
+
+func Test_when_node_receieves_and_accepts_log_entries_from_the_new_leader_it_returns_its_last_log_index(t *testing.T) {
+	n := createNode()
+	n.boot()
+	n.log = newInmemoryLog()
+	n.dispatcher.(*mockDispatcher).callback = func(event event) {
+		n.handleEvent(event)
+	}
+	term := getCurrentTerm(n)
+	prevLogIndex := uint64(0)
+	leaderCommit := uint64(2)
+
+	n.dispatcher.Dispatch(event{AppendEntries, &appendEntriesRequest{from: peer{"peer1"}, term: term, prevLogTerm: term, prevLogIndex: prevLogIndex, entries: []entry{entry{term: term}}, leaderCommit: leaderCommit}})
+
 }
